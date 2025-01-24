@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+option go_package = "github.com/HJyup/translatify/api";
+
+package api;
+
+message User {
+  string user_id = 1;
+  string name = 2;
+  string email = 3;
+}
+
+service UserService {
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+  rpc GetUser(GetUserRequest) returns (User);
+}
+
+message CreateUserRequest {
+  string name = 1;
+  string email = 2;
+  string password = 3;
+}
+
+message CreateUserResponse {
+  string user_id = 1;
+  string message = 2;
+  int32 status_code = 3;
+}
+
+message GetUserRequest {
+  string user_id = 1;
+}
