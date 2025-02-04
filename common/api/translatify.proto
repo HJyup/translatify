@@ -4,29 +4,108 @@ option go_package = "github.com/HJyup/translatify/api";
 
 package api;
 
-message User {
+// The ChatService handles one-to-one text messages.
+service ChatService {
+  // SendMessage sends a text message from one user to another.
+  // The request includes language information to support translation.
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+
+  // StreamMessages sets up a server streaming endpoint that pushes new messages for the user.
+  // This can be used for real-time message updates.
+  rpc StreamMessages(StreamMessagesRequest) returns (stream ChatMessage);
+
+  // GetMessage retrieves a specific chat message by its message_id.
+  rpc GetMessage(GetMessageRequest) returns (GetMessageResponse);
+
+  // ListMessages retrieves a list of chat messages between two users.
+  // This can support pagination and filtering by timestamp.
+  rpc ListMessages(ListMessagesRequest) returns (ListMessagesResponse);
+}
+
+// SendMessageRequest is used to send a message from one user to another.
+// It includes fields for language codes so that the translation service knows
+// which translation to perform.
+message SendMessageRequest {
+  string from_user_id = 1;
+  string to_user_id = 2;
+  // Original text message.
+  string content = 3;
+  // Unix timestamp (in seconds or milliseconds, depending on your convention).
+  int64 timestamp = 4;
+  // The language code of the original content (e.g., "en" for English).
+  string source_language = 5;
+  // The language code into which the message should be translated for the receiver (e.g., "es" for Spanish).
+  string target_language = 6;
+}
+
+// SendMessageResponse returns the result of the SendMessage RPC.
+message SendMessageResponse {
+  bool success = 1;
+  // Unique identifier for the message.
+  string message_id = 2;
+  // Optionally, error details if success is false.
+  string error = 3;
+}
+
+// StreamMessagesRequest is used to subscribe to a stream of messages for a user.
+message StreamMessagesRequest {
   string user_id = 1;
-  string name = 2;
-  string email = 3;
+  // Optionally, a "since" field to start streaming messages from a particular timestamp.
+  int64 since_timestamp = 2;
 }
 
-service UserService {
-  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
-  rpc GetUser(GetUserRequest) returns (User);
+// ChatMessage represents a chat message in the system.
+// It includes both the original content and the translated content.
+// The sender's view will typically include only the original message,
+// while the receiver's view will include the translated message once available.
+message ChatMessage {
+  // Unique identifier for the message.
+  string message_id = 1;
+  string from_user_id = 2;
+  string to_user_id = 3;
+  // Original text content.
+  string content = 4;
+  // Translated text content (populated by the translation service).
+  // This field may be empty if the translation is not yet available.
+  string translated_content = 5;
+  // Unix timestamp.
+  int64 timestamp = 6;
+  // Indicates whether a translation has been applied.
+  bool translated = 7;
 }
 
-message CreateUserRequest {
-  string name = 1;
-  string email = 2;
-  string password = 3;
+// GetMessageRequest is used to fetch a specific message by its ID.
+message GetMessageRequest {
+  string message_id = 1;
 }
 
-message CreateUserResponse {
+// GetMessageResponse returns the chat message corresponding to the provided message_id.
+message GetMessageResponse {
+  ChatMessage message = 1;
+  // Optionally, you can include error details or status.
+  string error = 2;
+}
+
+// ListMessagesRequest is used to fetch a list of messages between two users.
+message ListMessagesRequest {
+  // The ID of one of the users in the conversation.
   string user_id = 1;
-  string message = 2;
-  int32 status_code = 3;
+  // The ID of the other user in the conversation.
+  string correspondent_user_id = 2;
+  // Optional field to filter messages starting after a specific timestamp.
+  int64 since_timestamp = 3;
+  // Pagination: maximum number of messages to return.
+  int32 limit = 4;
+  // Optional pagination token for fetching the next set of results.
+  string page_token = 5;
 }
 
-message GetUserRequest {
-  string user_id = 1;
+// ListMessagesResponse returns a list of chat messages.
+message ListMessagesResponse {
+  // The list of messages matching the query.
+  repeated ChatMessage messages = 1;
+  // A token that can be used to retrieve the next page of results, if any.
+  string next_page_token = 2;
+  // Optionally, include error details or status.
+  string error = 3;
 }
