@@ -1,34 +1,51 @@
 package main
 
 import (
-	common "github.com/HJyup/translatify-common"
-	pb "github.com/HJyup/translatify-common/api"
+	"context"
+	"github.com/HJyup/translatify-common/discovery"
+	"github.com/HJyup/translatify-common/discovery/consul"
+	"github.com/HJyup/translatify-common/utils"
+	"github.com/HJyup/translatify-gateway/gateway"
 	"github.com/HJyup/translatify-gateway/handlers"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"log"
 	"net/http"
+	"time"
 
 	_ "github.com/joho/godotenv/autoload"
 )
 
 var (
-	httpAddr        = common.EnvString("GATEWAY_ADDR", ":1234")
-	chatServiceAddr = common.EnvString("CHAT_SERVICE_ADDR", "localhost:50051")
+	serviceName = "gateway"
+	httpAddr    = utils.EnvString("GATEWAY_ADDR", ":8080")
+	consulAddr  = utils.EnvString("CONSUL_ADDR", "localhost:8500")
 )
 
 func main() {
-	conn, err := grpc.NewClient(chatServiceAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	registry, err := consul.NewRegistry(consulAddr, serviceName)
 	if err != nil {
-		log.Fatal("Failed to connect to chat service", err)
+		panic(err)
 	}
-	defer conn.Close()
+
+	ctx := context.Background()
+	instanceID := discovery.GenerateInstanceID(serviceName)
+	if err := registry.Register(ctx, instanceID, serviceName, httpAddr); err != nil {
+		panic(err)
+	}
+
+	go func() {
+		for {
+			if err := registry.HealthCheck(instanceID, serviceName); err != nil {
+				log.Fatal("Failed to health check", err)
+			}
+			time.Sleep(1 * time.Second)
+		}
+	}()
+	defer registry.DeRegister(ctx, instanceID, serviceName)
 
 	mux := http.NewServeMux()
 
-	chatClient := pb.NewChatServiceClient(conn)
-
-	chatHandler := handlers.NewChatHandler(chatClient)
+	chatGateway := gateway.NewGateway(registry)
+	chatHandler := handlers.NewChatHandler(chatGateway)
 	chatHandler.RegisterRoutes(mux)
 
 	log.Println("Starting server on", httpAddr)

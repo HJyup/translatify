@@ -1,17 +1,18 @@
 package handlers
 
 import (
-	common "github.com/HJyup/translatify-common"
 	pb "github.com/HJyup/translatify-common/api"
+	"github.com/HJyup/translatify-common/utils"
+	"github.com/HJyup/translatify-gateway/gateway"
 	"net/http"
 )
 
 type ChatHandler struct {
-	chatClient pb.ChatServiceClient
+	gateway gateway.ChatGateway
 }
 
-func NewChatHandler(chatClient pb.ChatServiceClient) *ChatHandler {
-	return &ChatHandler{chatClient}
+func NewChatHandler(gateway gateway.ChatGateway) *ChatHandler {
+	return &ChatHandler{gateway}
 }
 
 func (h *ChatHandler) RegisterRoutes(mux *http.ServeMux) {
@@ -21,13 +22,13 @@ func (h *ChatHandler) RegisterRoutes(mux *http.ServeMux) {
 func (h *ChatHandler) HandleGetMessage(w http.ResponseWriter, r *http.Request) {
 	messageID := r.PathValue("messageID")
 
-	res, err := h.chatClient.GetMessage(r.Context(), &pb.GetMessageRequest{
+	res, err := h.gateway.GetMessage(r.Context(), &pb.GetMessageRequest{
 		MessageId: messageID,
 	})
 	if err != nil {
-		common.WriteError(w, http.StatusBadRequest, err.Error())
+		utils.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	common.WriteJSON(w, 200, res)
+	utils.WriteJSON(w, 200, res)
 }
