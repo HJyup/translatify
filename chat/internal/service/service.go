@@ -2,6 +2,7 @@ package service
 
 import (
 	"github.com/HJyup/translatify-chat/internal/models"
+	pb "github.com/HJyup/translatify-common/api"
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
@@ -17,10 +18,10 @@ func (s *Service) SendMessage(fromID, toID, content, sourceLang, targetLang stri
 	return "", nil
 }
 
-func (s *Service) GetMessage(id string) (*models.ChatMessage, error) {
+func (s *Service) GetMessage(id string) (*pb.ChatMessage, error) {
 	return nil, nil
 }
 
-func (s *Service) ListMessages(userID, correspondentID string, since *timestamp.Timestamp) ([]*models.ChatMessage, error) {
+func (s *Service) ListMessages(userID, correspondentID string, since *timestamp.Timestamp) ([]*pb.ChatMessage, error) {
 	return nil, nil
 }

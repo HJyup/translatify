@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+option go_package = "github.com/HJyup/translatify/api";
+
+package api;
+
+service TranslationService {
+  // TranslateMessage is invoked (directly or indirectly via message consumption)
+  // to translate the original content into the target language.
+  rpc TranslateMessage(TranslationRequest) returns (TranslationResponse);
+  rpc GetTranslation(TranslationGetRequest) returns (TranslationGetResponse);
+}
+
+// TranslationRequest defines the information required to translate a message.
+message TranslationRequest {
+  // Unique identifier of the message to be translated.
+  string message_id = 1;
+  // The original text content to be translated.
+  string content = 2;
+  // The language code of the original content (e.g., "en").
+  string source_language = 3;
+  // The language code into which the content should be translated (e.g., "es").
+  string target_language = 4;
+  // Unix timestamp of when the message was originally sent.
+  int64 timestamp = 5;
+}
+
+// TranslationResponse provides the result of a translation request.
+message TranslationResponse {
+  // Unique identifier of the message that was translated.
+  string message_id = 1;
+  // The translated text content.
+  string translated_content = 2;
+  // Indicates whether the translation was successful.
+  bool success = 3;
+  // Optionally, error details if the translation failed.
+  string error = 4;
+}
+
+message TranslationGetRequest {
+  string message_id = 1;
+}
+
+message TranslationGetResponse {
+  string message_id = 1;
+  string translated_content = 2;
+  bool success = 3;
+  string error = 4;
+}
