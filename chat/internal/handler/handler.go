@@ -9,7 +9,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"log"
+	"google.golang.org/protobuf/types/known/timestamppb"
+	"time"
 )
 
 type GrpcHandler struct {
@@ -37,7 +38,6 @@ func (h *GrpcHandler) StreamMessages(*pb.StreamMessagesRequest, grpc.ServerStrea
 }
 
 func (h *GrpcHandler) GetMessage(ctx context.Context, p *pb.GetMessageRequest) (*pb.GetMessageResponse, error) {
-	log.Println("Are u trying to get a message?")
 	msg := &pb.ChatMessage{
 		MessageId:         "25",
 		FromUserId:        "22",
@@ -64,6 +64,25 @@ func (h *GrpcHandler) GetMessage(ctx context.Context, p *pb.GetMessageRequest) (
 
 	return &pb.GetMessageResponse{Message: msg}, nil
 }
-func (h *GrpcHandler) ListMessages(context.Context, *pb.ListMessagesRequest) (*pb.ListMessagesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListMessages not implemented")
+
+func (h *GrpcHandler) ListMessages(ctx context.Context, req *pb.ListMessagesRequest) (*pb.ListMessagesResponse, error) {
+	if req.GetUserId() == "" || req.GetCorrespondentUserId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "user_id and correspondent_user_id must be provided")
+	}
+
+	var since *timestamppb.Timestamp
+	if req.GetSinceTimestamp() > 0 {
+		since = timestamppb.New(time.Unix(req.GetSinceTimestamp(), 0))
+	}
+
+	messages, err := h.service.ListMessages(req.GetUserId(), req.GetCorrespondentUserId(), since)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list messages: %v", err)
+	}
+
+	resp := &pb.ListMessagesResponse{
+		Messages:      messages,
+		NextPageToken: "", // Pagination not implemented in this example.
+	}
+	return resp, nil
 }

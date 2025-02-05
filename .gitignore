@@ -28,3 +28,6 @@ go.work.sum
 
 # Temporary files created by air
 tmp
+
+# Generated files from proto
+*.pb.go

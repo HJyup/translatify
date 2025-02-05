@@ -27,3 +27,18 @@ func (g *Gateway) GetMessage(ctx context.Context, payload *pb.GetMessageRequest)
 		MessageId: payload.MessageId,
 	})
 }
+
+func (g *Gateway) ListMessages(ctx context.Context, payload *pb.ListMessagesRequest) (*pb.ListMessagesResponse, error) {
+	conn, err := discovery.ServiceConnection(ctx, "chat", g.registry)
+	if err != nil {
+		log.Fatal("Failed to connect to chat service")
+	}
+
+	chatClient := pb.NewChatServiceClient(conn)
+
+	return chatClient.ListMessages(ctx, &pb.ListMessagesRequest{
+		UserId:              payload.UserId,
+		CorrespondentUserId: payload.CorrespondentUserId,
+		SinceTimestamp:      payload.SinceTimestamp,
+	})
+}
