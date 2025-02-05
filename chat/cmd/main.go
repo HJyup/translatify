@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"github.com/jackc/pgx/v5"
 	"log"
 	"net"
 	"time"
@@ -14,21 +13,22 @@ import (
 	"github.com/HJyup/translatify-common/discovery"
 	"github.com/HJyup/translatify-common/discovery/consul"
 	common "github.com/HJyup/translatify-common/utils"
+	"github.com/jackc/pgx/v5"
 	"google.golang.org/grpc"
 
 	_ "github.com/joho/godotenv/autoload"
 )
 
 var (
-	serviceName = "chat"
-	grpcAddr    = common.EnvString("GRPC_ADDR", "localhost:5050")
-	consulAddr  = common.EnvString("CONSUL_ADDR", "localhost:8500")
+	serviceName = common.EnvString("SERVICE_NAME")
+	grpcAddr    = common.EnvString("GRPC_ADDR")
+	consulAddr  = common.EnvString("CONSUL_ADDR")
 
-	amqpUser    = common.EnvString("AMQP_USER", "guest")
-	amqpPass    = common.EnvString("AMQP_PASS", "guest")
-	amqpHost    = common.EnvString("AMQP_HOST", "localhost")
-	amqpPort    = common.EnvString("AMQP_PORT", "5672")
-	databaseURL = common.EnvString("DATABASE_URL", "postgres://user:password@localhost:5432/dbname?sslmode=disable")
+	amqpUser    = common.EnvString("AMQP_USER")
+	amqpPass    = common.EnvString("AMQP_PASS")
+	amqpHost    = common.EnvString("AMQP_HOST")
+	amqpPort    = common.EnvString("AMQP_PORT")
+	databaseURL = common.EnvString("DATABASE_URL")
 )
 
 func main() {
@@ -39,7 +39,7 @@ func main() {
 
 	ctx := context.Background()
 	instanceID := discovery.GenerateInstanceID(serviceName)
-	if err := registry.Register(ctx, instanceID, serviceName, grpcAddr); err != nil {
+	if err = registry.Register(ctx, instanceID, serviceName, grpcAddr); err != nil {
 		panic(err)
 	}
 
@@ -59,7 +59,13 @@ func main() {
 		_ = ch.Close()
 	}()
 
-	dbConn, err := pgx.Connect(context.Background(), databaseURL)
+	config, err := pgx.ParseConfig(databaseURL)
+	if err != nil {
+		log.Fatalf("Failed to parse database config: %v", err)
+	}
+	config.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
+
+	dbConn, err := pgx.ConnectConfig(context.Background(), config)
 	if err != nil {
 		log.Fatalf("Failed to connect to the database: %v", err)
 	}
@@ -77,7 +83,6 @@ func main() {
 	handler.NewGrpcHandler(grpcServer, srv, ch)
 
 	log.Printf("Starting chat server on %s", grpcAddr)
-
 	if err = grpcServer.Serve(conn); err != nil {
 		log.Fatal(err.Error())
 	}

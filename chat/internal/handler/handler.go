@@ -2,15 +2,16 @@ package handler
 
 import (
 	"context"
-	"github.com/HJyup/translatify-chat/internal/models"
-	pb "github.com/HJyup/translatify-common/api"
 	"github.com/HJyup/translatify-common/broker"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"time"
+
+	"github.com/HJyup/translatify-chat/internal/models"
+	pb "github.com/HJyup/translatify-common/api"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"time"
 )
 
 type GrpcHandler struct {
@@ -29,23 +30,18 @@ func NewGrpcHandler(grpcServer *grpc.Server, service models.ChatService, channel
 	pb.RegisterChatServiceServer(grpcServer, handler)
 }
 
-func (h *GrpcHandler) SendMessage(context.Context, *pb.SendMessageRequest) (*pb.SendMessageResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendMessage not implemented")
-}
+func (h *GrpcHandler) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*pb.SendMessageResponse, error) {
+	fromID := req.GetFromUserId()
+	toID := req.GetToUserId()
+	content := req.GetContent()
 
-func (h *GrpcHandler) StreamMessages(*pb.StreamMessagesRequest, grpc.ServerStreamingServer[pb.ChatMessage]) error {
-	return status.Errorf(codes.Unimplemented, "method StreamMessages not implemented")
-}
+	if fromID == "" || toID == "" || content == "" {
+		return nil, status.Error(codes.InvalidArgument, "from_user_id, to_user_id, and content must be provided")
+	}
 
-func (h *GrpcHandler) GetMessage(ctx context.Context, p *pb.GetMessageRequest) (*pb.GetMessageResponse, error) {
-	msg := &pb.ChatMessage{
-		MessageId:         "25",
-		FromUserId:        "22",
-		ToUserId:          "34",
-		Content:           "Hello, World!",
-		TranslatedContent: "Hallo, Welt!",
-		Timestamp:         234234,
-		Translated:        false,
+	messageID, err := h.service.SendMessage(fromID, toID, content, "", "")
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to send message: %v", err)
 	}
 
 	q, err := h.channel.QueueDeclare(broker.MessageSentEvent, true, false, false, false, nil)
@@ -60,6 +56,40 @@ func (h *GrpcHandler) GetMessage(ctx context.Context, p *pb.GetMessageRequest) (
 	})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to publish message: %v", err)
+	}
+
+	return &pb.SendMessageResponse{MessageId: messageID}, nil
+}
+
+func (h *GrpcHandler) StreamMessages(req *pb.StreamMessagesRequest, stream pb.ChatService_StreamMessagesServer) error {
+	userID := req.GetUserId()
+	correspondentUserID := req.GetCorrespondentUserId()
+	sinceTimestamp := req.GetSinceTimestamp()
+
+	msgCh, err := h.service.StreamMessages(stream.Context(), userID, correspondentUserID, sinceTimestamp)
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to start message stream: %v", err)
+	}
+
+	for {
+		select {
+		case <-stream.Context().Done():
+			return nil
+		case msg, ok := <-msgCh:
+			if !ok {
+				return nil
+			}
+			if err = stream.Send(msg); err != nil {
+				return status.Errorf(codes.Internal, "failed to send message: %v", err)
+			}
+		}
+	}
+}
+
+func (h *GrpcHandler) GetMessage(ctx context.Context, req *pb.GetMessageRequest) (*pb.GetMessageResponse, error) {
+	msg, err := h.service.GetMessage(req.GetMessageId())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get message: %v", err)
 	}
 
 	return &pb.GetMessageResponse{Message: msg}, nil
@@ -82,7 +112,7 @@ func (h *GrpcHandler) ListMessages(ctx context.Context, req *pb.ListMessagesRequ
 
 	resp := &pb.ListMessagesResponse{
 		Messages:      messages,
-		NextPageToken: "", // Pagination not implemented in this example.
+		NextPageToken: "",
 	}
 	return resp, nil
 }

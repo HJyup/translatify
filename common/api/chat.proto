@@ -50,8 +50,8 @@ message SendMessageResponse {
 // StreamMessagesRequest is used to subscribe to a stream of messages for a user.
 message StreamMessagesRequest {
   string user_id = 1;
-  // Optionally, a "since" field to start streaming messages from a particular timestamp.
-  int64 since_timestamp = 2;
+  string correspondent_user_id = 2;
+  int64 since_timestamp = 3;
 }
 
 // ChatMessage represents a chat message in the system.

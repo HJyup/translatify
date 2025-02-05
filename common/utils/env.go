@@ -1,10 +1,14 @@
 package utils
 
-import "syscall"
+import (
+	"log"
+	"os"
+)
 
-func EnvString(key, defaultValue string) string {
-	if value, ok := syscall.Getenv(key); ok {
+func EnvString(key string) string {
+	if value, ok := os.LookupEnv(key); ok && value != "" {
 		return value
 	}
-	return defaultValue
+	log.Fatalf("Required environment variable %s is not set or is empty", key)
+	return ""
 }

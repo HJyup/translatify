@@ -5,8 +5,9 @@ import (
 	"github.com/HJyup/translatify-common/discovery"
 	"github.com/HJyup/translatify-common/discovery/consul"
 	"github.com/HJyup/translatify-common/utils"
-	"github.com/HJyup/translatify-gateway/gateway"
-	"github.com/HJyup/translatify-gateway/handlers"
+	"github.com/HJyup/translatify-gateway/internal/gateway"
+	"github.com/HJyup/translatify-gateway/internal/handlers"
+	mux2 "github.com/gorilla/mux"
 	"log"
 	"net/http"
 	"time"
@@ -16,8 +17,8 @@ import (
 
 var (
 	serviceName = "gateway"
-	httpAddr    = utils.EnvString("GATEWAY_ADDR", ":8080")
-	consulAddr  = utils.EnvString("CONSUL_ADDR", "localhost:8500")
+	httpAddr    = utils.EnvString("GATEWAY_ADDR")
+	consulAddr  = utils.EnvString("CONSUL_ADDR")
 )
 
 func main() {
@@ -42,7 +43,7 @@ func main() {
 	}()
 	defer registry.DeRegister(ctx, instanceID, serviceName)
 
-	mux := http.NewServeMux()
+	mux := mux2.NewRouter()
 
 	chatGateway := gateway.NewGateway(registry)
 	chatHandler := handlers.NewChatHandler(chatGateway)
