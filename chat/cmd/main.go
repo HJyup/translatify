@@ -5,6 +5,7 @@ import (
 	"github.com/HJyup/translatify-chat/internal/handler"
 	"github.com/HJyup/translatify-chat/internal/service"
 	"github.com/HJyup/translatify-chat/internal/store"
+	"github.com/HJyup/translatify-common/broker"
 	"github.com/HJyup/translatify-common/discovery"
 	"github.com/HJyup/translatify-common/discovery/consul"
 	common "github.com/HJyup/translatify-common/utils"
@@ -18,6 +19,11 @@ var (
 	serviceName = "chat"
 	grpcAddr    = common.EnvString("GRPC_ADDR", "localhost:5050")
 	consulAddr  = common.EnvString("CONSUL_ADDR", "localhost:8500")
+
+	amqpUser = common.EnvString("AMQP_USER", "guest")
+	amqpPass = common.EnvString("AMQP_PASS", "guest")
+	amqpHost = common.EnvString("AMQP_HOST", "localhost")
+	amqpPort = common.EnvString("AMQP_PORT", "5672")
 )
 
 func main() {
@@ -42,6 +48,12 @@ func main() {
 	}()
 	defer registry.DeRegister(ctx, instanceID, serviceName)
 
+	ch, close := broker.Connect(amqpUser, amqpPass, amqpHost, amqpPort)
+	defer func() {
+		_ = close()
+		_ = ch.Close()
+	}()
+
 	grpcServer := grpc.NewServer()
 	conn, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
@@ -51,9 +63,7 @@ func main() {
 
 	str := store.NewStore()
 	srv := service.NewService(str)
-	handler.NewGrpcHandler(grpcServer)
-
-	srv.GetMessage("25")
+	handler.NewGrpcHandler(grpcServer, srv, ch)
 
 	log.Printf("Starting chat server on %s", grpcAddr)
 
