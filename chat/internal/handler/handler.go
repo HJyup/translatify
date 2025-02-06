@@ -30,16 +30,39 @@ func NewGrpcHandler(grpcServer *grpc.Server, service models.ChatService, channel
 	pb.RegisterChatServiceServer(grpcServer, handler)
 }
 
-func (h *GrpcHandler) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*pb.SendMessageResponse, error) {
-	fromID := req.GetFromUserId()
-	toID := req.GetToUserId()
-	content := req.GetContent()
+func (h *GrpcHandler) CreateConversation(ctx context.Context, req *pb.CreateConversationRequest) (*pb.CreateConversationResponse, error) {
+	userAID := req.GetUserAId()
+	userBID := req.GetUserBId()
+	sourceLang := req.GetSourceLanguage()
+	targetLang := req.GetTargetLanguage()
 
-	if fromID == "" || toID == "" || content == "" {
-		return nil, status.Error(codes.InvalidArgument, "from_user_id, to_user_id, and content must be provided")
+	if userAID == "" || userBID == "" || sourceLang == "" || targetLang == "" {
+		return nil, status.Error(codes.InvalidArgument, "user_a_id, user_b_id, source_lang, and target_lang must be provided")
 	}
 
-	messageID, err := h.service.SendMessage(fromID, toID, content, "", "")
+	convID, err := h.service.CreateConversation(userAID, userBID, sourceLang, targetLang)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to create conversation: %v", err)
+	}
+
+	return &pb.CreateConversationResponse{
+		Success:        true,
+		ConversationId: convID,
+		Error:          "",
+	}, nil
+}
+
+func (h *GrpcHandler) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*pb.SendMessageResponse, error) {
+	conID := req.GetConversationId()
+	senderID := req.GetSenderId()
+	receiverID := req.GetReceiverId()
+	content := req.GetContent()
+
+	if conID == "" || senderID == "" || content == "" || receiverID == "" {
+		return nil, status.Error(codes.InvalidArgument, "conversation_id, sender_id, receiver_id, and content must be provided")
+	}
+
+	messageID, err := h.service.SendMessage(conID, senderID, receiverID, content)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to send message: %v", err)
 	}
@@ -62,11 +85,9 @@ func (h *GrpcHandler) SendMessage(ctx context.Context, req *pb.SendMessageReques
 }
 
 func (h *GrpcHandler) StreamMessages(req *pb.StreamMessagesRequest, stream pb.ChatService_StreamMessagesServer) error {
-	userID := req.GetUserId()
-	correspondentUserID := req.GetCorrespondentUserId()
-	sinceTimestamp := req.GetSinceTimestamp()
+	convID := req.GetConversationId()
 
-	msgCh, err := h.service.StreamMessages(stream.Context(), userID, correspondentUserID, sinceTimestamp)
+	msgCh, err := h.service.StreamMessages(stream.Context(), convID)
 	if err != nil {
 		return status.Errorf(codes.Internal, "failed to start message stream: %v", err)
 	}
@@ -96,8 +117,8 @@ func (h *GrpcHandler) GetMessage(ctx context.Context, req *pb.GetMessageRequest)
 }
 
 func (h *GrpcHandler) ListMessages(ctx context.Context, req *pb.ListMessagesRequest) (*pb.ListMessagesResponse, error) {
-	if req.GetUserId() == "" || req.GetCorrespondentUserId() == "" {
-		return nil, status.Error(codes.InvalidArgument, "user_id and correspondent_user_id must be provided")
+	if req.GetConversationId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "conversation_id must be provided")
 	}
 
 	var since *timestamppb.Timestamp
@@ -105,14 +126,14 @@ func (h *GrpcHandler) ListMessages(ctx context.Context, req *pb.ListMessagesRequ
 		since = timestamppb.New(time.Unix(req.GetSinceTimestamp(), 0))
 	}
 
-	messages, err := h.service.ListMessages(req.GetUserId(), req.GetCorrespondentUserId(), since)
+	messages, pageToken, err := h.service.ListMessages(req.GetConversationId(), since, int(req.GetLimit()), req.GetPageToken())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list messages: %v", err)
 	}
 
 	resp := &pb.ListMessagesResponse{
 		Messages:      messages,
-		NextPageToken: "",
+		NextPageToken: pageToken,
 	}
 	return resp, nil
 }

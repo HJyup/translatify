@@ -29,7 +29,7 @@ func main() {
 
 	ctx := context.Background()
 	instanceID := discovery.GenerateInstanceID(serviceName)
-	if err := registry.Register(ctx, instanceID, serviceName, httpAddr); err != nil {
+	if err = registry.Register(ctx, instanceID, serviceName, httpAddr); err != nil {
 		panic(err)
 	}
 

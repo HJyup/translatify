@@ -1,21 +1,25 @@
 package models
 
+type CreateConversationRequest struct {
+	UserAId        string `json:"userAId"`
+	UserBId        string `json:"userBId"`
+	SourceLanguage string `json:"sourceLanguage"`
+	TargetLanguage string `json:"targetLanguage"`
+}
+
 type SendMessageRequest struct {
 	FromUserID string `json:"fromUserId"`
 	ToUserID   string `json:"toUserId"`
 	Content    string `json:"content"`
-	SourceLang string `json:"sourceLang"`
-	TargetLang string `json:"targetLang"`
 }
 
 type ListMessagesRequest struct {
-	UserID              string `json:"userId"`
-	CorrespondentUserID string `json:"correspondentUserId"`
-	SinceTimestamp      int64  `json:"sinceTimestamp"`
+	SinceTimestamp int64  `json:"sinceTimestamp"`
+	Limit          int32  `json:"limit"`
+	PageToken      string `json:"pageToken"`
 }
 
 type StreamMessagesRequest struct {
-	UserID              string `json:"userId"`
-	CorrespondentUserID string `json:"correspondentUserId"`
-	SinceTimestamp      int64  `json:"sinceTimestamp"`
+	ConversationId string `json:"conversationId"`
+	SinceTimestamp int64  `json:"sinceTimestamp"`
 }

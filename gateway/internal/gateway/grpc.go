@@ -2,9 +2,10 @@ package gateway
 
 import (
 	"context"
+	"log"
+
 	pb "github.com/HJyup/translatify-common/api"
 	"github.com/HJyup/translatify-common/discovery"
-	"log"
 )
 
 type Gateway struct {
@@ -12,17 +13,24 @@ type Gateway struct {
 }
 
 func NewGateway(registry discovery.Registry) *Gateway {
-	return &Gateway{registry}
+	return &Gateway{registry: registry}
 }
 
-func (g *Gateway) AddMessage(ctx context.Context, payload *pb.SendMessageRequest) (*pb.SendMessageResponse, error) {
+func (g *Gateway) CreateConversation(ctx context.Context, payload *pb.CreateConversationRequest) (*pb.CreateConversationResponse, error) {
 	conn, err := discovery.ServiceConnection(ctx, "chat", g.registry)
 	if err != nil {
 		log.Fatal("Failed to connect to chat service")
 	}
-
 	chatClient := pb.NewChatServiceClient(conn)
+	return chatClient.CreateConversation(ctx, payload)
+}
 
+func (g *Gateway) SendMessage(ctx context.Context, payload *pb.SendMessageRequest) (*pb.SendMessageResponse, error) {
+	conn, err := discovery.ServiceConnection(ctx, "chat", g.registry)
+	if err != nil {
+		log.Fatal("Failed to connect to chat service")
+	}
+	chatClient := pb.NewChatServiceClient(conn)
 	return chatClient.SendMessage(ctx, payload)
 }
 
@@ -31,12 +39,8 @@ func (g *Gateway) GetMessage(ctx context.Context, payload *pb.GetMessageRequest)
 	if err != nil {
 		log.Fatal("Failed to connect to chat service")
 	}
-
 	chatClient := pb.NewChatServiceClient(conn)
-
-	return chatClient.GetMessage(ctx, &pb.GetMessageRequest{
-		MessageId: payload.MessageId,
-	})
+	return chatClient.GetMessage(ctx, payload)
 }
 
 func (g *Gateway) ListMessages(ctx context.Context, payload *pb.ListMessagesRequest) (*pb.ListMessagesResponse, error) {
@@ -44,14 +48,8 @@ func (g *Gateway) ListMessages(ctx context.Context, payload *pb.ListMessagesRequ
 	if err != nil {
 		log.Fatal("Failed to connect to chat service")
 	}
-
 	chatClient := pb.NewChatServiceClient(conn)
-
-	return chatClient.ListMessages(ctx, &pb.ListMessagesRequest{
-		UserId:              payload.UserId,
-		CorrespondentUserId: payload.CorrespondentUserId,
-		SinceTimestamp:      payload.SinceTimestamp,
-	})
+	return chatClient.ListMessages(ctx, payload)
 }
 
 func (g *Gateway) StreamMessages(ctx context.Context, payload *pb.StreamMessagesRequest) (pb.ChatService_StreamMessagesClient, error) {
@@ -60,7 +58,6 @@ func (g *Gateway) StreamMessages(ctx context.Context, payload *pb.StreamMessages
 		log.Fatal("Failed to connect to chat service")
 		return nil, err
 	}
-
 	chatClient := pb.NewChatServiceClient(conn)
 	return chatClient.StreamMessages(ctx, payload)
 }

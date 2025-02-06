@@ -7,14 +7,16 @@ import (
 )
 
 type ChatService interface {
-	SendMessage(fromID, toID, content, sourceLang, targetLang string) (string, error)
-	GetMessage(id string) (*pb.ChatMessage, error)
-	ListMessages(userID, correspondentID string, since *timestamp.Timestamp) ([]*pb.ChatMessage, error)
-	StreamMessages(ctx context.Context, userID, correspondentID string, sinceTimestamp int64) (<-chan *pb.ChatMessage, error)
+	CreateConversation(userAID, userBID, sourceLang, targetLang string) (string, error)
+	SendMessage(conversationID, senderID, receiverID, content string) (string, error)
+	GetMessage(messageID string) (*pb.ChatMessage, error)
+	ListMessages(conversationID string, since *timestamp.Timestamp, limit int, pageToken string) ([]*pb.ChatMessage, string, error)
+	StreamMessages(ctx context.Context, conversationID string) (<-chan *pb.ChatMessage, error)
 }
 
 type ChatStore interface {
+	CreateConversion(ctx context.Context, conv *pb.Conversation) (string, error)
 	AddMessage(ctx context.Context, msg *pb.ChatMessage) error
 	GetMessage(ctx context.Context, id string) (*pb.ChatMessage, error)
-	ListMessages(ctx context.Context, userID, correspondentID string, since *timestamp.Timestamp) ([]*pb.ChatMessage, error)
+	ListMessages(ctx context.Context, conversationID string, since *timestamp.Timestamp, limit int, pageToken string) ([]*pb.ChatMessage, string, error)
 }

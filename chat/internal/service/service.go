@@ -19,9 +19,30 @@ func NewService(store models.ChatStore) *Service {
 	return &Service{store: store}
 }
 
-func (s *Service) SendMessage(fromID, toID, content, sourceLang, targetLang string) (string, error) {
-	if fromID == "" || toID == "" || content == "" {
-		return "", errors.New("fromID, toID, and content are required")
+func (s *Service) CreateConversation(userA, userB, sourceLang, targetLang string) (string, error) {
+	if userA == "" || userB == "" || sourceLang == "" || targetLang == "" {
+		return "", errors.New("userA, userB, sourceLang, and targetLang are required")
+	}
+	conv := &pb.Conversation{
+		ConversationId: uuid.New().String(),
+		UserAId:        userA,
+		UserBId:        userB,
+		CreatedAt:      time.Now().Unix(),
+		SourceLanguage: sourceLang,
+		TargetLanguage: targetLang,
+	}
+
+	conversationID, err := s.store.CreateConversion(context.Background(), conv)
+	if err != nil {
+		return "", err
+	}
+
+	return conversationID, nil
+}
+
+func (s *Service) SendMessage(conversationID, senderID, receiverID, content string) (string, error) {
+	if conversationID == "" || senderID == "" || receiverID == "" || content == "" {
+		return "", errors.New("conversationID, senderID, receiverID, and content are required")
 	}
 
 	messageID := uuid.New().String()
@@ -29,8 +50,9 @@ func (s *Service) SendMessage(fromID, toID, content, sourceLang, targetLang stri
 
 	msg := &pb.ChatMessage{
 		MessageId:         messageID,
-		FromUserId:        fromID,
-		ToUserId:          toID,
+		ConversationId:    conversationID,
+		SenderId:          senderID,
+		ReceiverId:        receiverID,
 		Content:           content,
 		TranslatedContent: "",
 		Timestamp:         now,
@@ -44,38 +66,30 @@ func (s *Service) SendMessage(fromID, toID, content, sourceLang, targetLang stri
 	return messageID, nil
 }
 
-func (s *Service) GetMessage(id string) (*pb.ChatMessage, error) {
-	if id == "" {
+func (s *Service) GetMessage(messageID string) (*pb.ChatMessage, error) {
+	if messageID == "" {
 		return nil, errors.New("message id is required")
 	}
-
-	return s.store.GetMessage(context.Background(), id)
+	return s.store.GetMessage(context.Background(), messageID)
 }
 
-func (s *Service) ListMessages(userID, correspondentID string, since *timestamp.Timestamp) ([]*pb.ChatMessage, error) {
-	if userID == "" || correspondentID == "" {
-		return nil, errors.New("userID and correspondentID are required")
+func (s *Service) ListMessages(conversationID string, since *timestamp.Timestamp, limit int, pageToken string) ([]*pb.ChatMessage, string, error) {
+	if conversationID == "" {
+		return nil, "", errors.New("conversationID is required")
 	}
-
-	messages, err := s.store.ListMessages(context.Background(), userID, correspondentID, since)
-	if err != nil {
-		return nil, err
-	}
-
-	return messages, nil
+	return s.store.ListMessages(context.Background(), conversationID, since, limit, pageToken)
 }
 
-func (s *Service) StreamMessages(ctx context.Context, userID, correspondentID string, sinceTimestamp int64) (<-chan *pb.ChatMessage, error) {
-	if userID == "" || correspondentID == "" {
-		return nil, errors.New("userID and correspondentID are required")
+func (s *Service) StreamMessages(ctx context.Context, conversationID string) (<-chan *pb.ChatMessage, error) {
+	if conversationID == "" {
+		return nil, errors.New("conversationID is required")
 	}
 
 	out := make(chan *pb.ChatMessage)
+	startTime := time.Now().Unix()
 
 	go func() {
 		defer close(out)
-		currentSince := sinceTimestamp
-
 		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 
@@ -84,24 +98,22 @@ func (s *Service) StreamMessages(ctx context.Context, userID, correspondentID st
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				since := &timestamp.Timestamp{Seconds: currentSince}
-				messages, err := s.store.ListMessages(context.Background(), userID, correspondentID, since)
+				since := &timestamp.Timestamp{Seconds: startTime}
+				messages, _, err := s.store.ListMessages(context.Background(), conversationID, since, 100, "")
 				if err != nil {
 					// In production, you might want to log this error.
 					continue
 				}
 
 				for _, msg := range messages {
-					// Only send messages that are new.
-					if msg.Timestamp > currentSince {
-						select {
-						case <-ctx.Done():
-							return
-						case out <- msg:
-							currentSince = msg.Timestamp
-						}
+					select {
+					case <-ctx.Done():
+						return
+					case out <- msg:
 					}
 				}
+
+				startTime = time.Now().Unix()
 			}
 		}
 	}()
