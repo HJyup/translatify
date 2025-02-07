@@ -2,12 +2,15 @@ package models
 
 import (
 	pb "github.com/HJyup/translatify-common/api"
-	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
-type TranslationService interface {
-	TranslateMessage(msgID, content, sourceLan, targetLan string, time timestamp.Timestamp) (pb.TranslationResponse, error)
+type ConsumerResponse struct {
+	SourceLang string `json:"sourceLang"`
+	TargetLang string `json:"targetLang"`
+	MessageID  string `json:"messageID"`
+	Content    string `json:"content"`
 }
 
-type ChatStore interface {
+type TranslationService interface {
+	TranslateMessage(sourceLang, targetLang, messageID, content string) (pb.TranslationResponse, error)
 }

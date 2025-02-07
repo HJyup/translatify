@@ -12,6 +12,7 @@ import (
 )
 
 var ErrMessageNotFound = errors.New("message not found")
+var ErrConversationNotFound = errors.New("conversation not found")
 
 type Store struct {
 	dbConn *pgx.Conn
@@ -114,6 +115,80 @@ func (s *Store) ListMessages(ctx context.Context, conversationID string, since *
 	}
 
 	return messages, nextPageToken, nil
+}
+
+func (s *Store) GetConversation(ctx context.Context, id string) (*pb.Conversation, error) {
+	query := `
+		SELECT conversation_id, user_a_id, user_b_id, created_at, source_language, target_language
+		FROM conversations
+		WHERE conversation_id = $1
+	`
+	row := s.dbConn.QueryRow(ctx, query, id)
+
+	var (
+		conversationID string
+		userAID        string
+		userBID        string
+		createdAt      int64
+		sourceLang     string
+		targetLang     string
+	)
+	if err := row.Scan(&conversationID, &userAID, &userBID, &createdAt, &sourceLang, &targetLang); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrConversationNotFound
+		}
+		return nil, err
+	}
+
+	return &pb.Conversation{
+		ConversationId: conversationID,
+		UserAId:        userAID,
+		UserBId:        userBID,
+		CreatedAt:      createdAt,
+		SourceLanguage: sourceLang,
+		TargetLanguage: targetLang,
+	}, nil
+}
+
+func (s *Store) ListConversations(ctx context.Context, userID string) ([]*pb.Conversation, error) {
+	query := `
+		SELECT conversation_id, user_a_id, user_b_id, created_at, source_language, target_language
+		FROM conversations
+		WHERE user_a_id = $1 OR user_b_id = $1
+	`
+	rows, err := s.dbConn.Query(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	conversations := make([]*pb.Conversation, 0)
+	for rows.Next() {
+		var (
+			conversationID string
+			userAID        string
+			userBID        string
+			createdAt      int64
+			sourceLang     string
+			targetLang     string
+		)
+		if err = rows.Scan(&conversationID, &userAID, &userBID, &createdAt, &sourceLang, &targetLang); err != nil {
+			return nil, err
+		}
+		conversations = append(conversations, &pb.Conversation{
+			ConversationId: conversationID,
+			UserAId:        userAID,
+			UserBId:        userBID,
+			CreatedAt:      createdAt,
+			SourceLanguage: sourceLang,
+			TargetLanguage: targetLang,
+		})
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return conversations, nil
 }
 
 type rowScanner interface {

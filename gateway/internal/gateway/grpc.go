@@ -61,3 +61,21 @@ func (g *Gateway) StreamMessages(ctx context.Context, payload *pb.StreamMessages
 	chatClient := pb.NewChatServiceClient(conn)
 	return chatClient.StreamMessages(ctx, payload)
 }
+
+func (g *Gateway) GetConversation(ctx context.Context, payload *pb.GetConversationRequest) (*pb.GetConversationResponse, error) {
+	conn, err := discovery.ServiceConnection(ctx, "chat", g.registry)
+	if err != nil {
+		log.Fatal("Failed to connect to chat service")
+	}
+	chatClient := pb.NewChatServiceClient(conn)
+	return chatClient.GetConversation(ctx, payload)
+}
+
+func (g *Gateway) ListConversations(ctx context.Context, payload *pb.ListConversationsRequest) (*pb.ListConversationsResponse, error) {
+	conn, err := discovery.ServiceConnection(ctx, "chat", g.registry)
+	if err != nil {
+		log.Fatal("Failed to connect to chat service")
+	}
+	chatClient := pb.NewChatServiceClient(conn)
+	return chatClient.ListConversations(ctx, payload)
+}

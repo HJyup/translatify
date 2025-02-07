@@ -120,3 +120,17 @@ func (s *Service) StreamMessages(ctx context.Context, conversationID string) (<-
 
 	return out, nil
 }
+
+func (s *Service) GetConversation(conversationID string) (*pb.Conversation, error) {
+	if conversationID == "" {
+		return nil, errors.New("conversationID is required")
+	}
+	return s.store.GetConversation(context.Background(), conversationID)
+}
+
+func (s *Service) ListConversations(userID string) ([]*pb.Conversation, error) {
+	if userID == "" {
+		return nil, errors.New("userID is required")
+	}
+	return s.store.ListConversations(context.Background(), userID)
+}

@@ -22,6 +22,12 @@ service ChatService {
 
   // ListMessages retrieves a list of messages in a conversation.
   rpc ListMessages(ListMessagesRequest) returns (ListMessagesResponse);
+
+  // ListConversations retrieves a list of conversations for a given user.
+  rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);
+
+  // GetConversation retrieves a specific conversation by its conversation_id.
+  rpc GetConversation(GetConversationRequest) returns (GetConversationResponse);
 }
 
 // Conversation represents a chat between two users.
@@ -131,4 +137,28 @@ message ListMessagesResponse {
   // A token that can be used to retrieve the next page of results.
   string next_page_token = 2;
   string error = 3;
+}
+
+// ListConversationsRequest retrieves conversations for a given user.
+message ListConversationsRequest {
+  // Identifier for the user.
+  string user_id = 1;
+}
+
+// ListConversationsResponse returns a list of Conversations.
+message ListConversationsResponse {
+  // The list of conversations for the user.
+  repeated Conversation conversations = 1;
+  string error = 2;
+}
+
+// GetConversationRequest retrieves a specific conversation by its ID.
+message GetConversationRequest {
+  string conversation_id = 1;
+}
+
+// GetConversationResponse returns a single Conversation.
+message GetConversationResponse {
+  Conversation conversation = 1;
+  string error = 2;
 }

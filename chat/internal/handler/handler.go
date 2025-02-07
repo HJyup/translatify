@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/HJyup/translatify-common/broker"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"time"
@@ -62,6 +63,11 @@ func (h *GrpcHandler) SendMessage(ctx context.Context, req *pb.SendMessageReques
 		return nil, status.Error(codes.InvalidArgument, "conversation_id, sender_id, receiver_id, and content must be provided")
 	}
 
+	conv, err := h.service.GetConversation(conID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get conversation: %v", err)
+	}
+
 	messageID, err := h.service.SendMessage(conID, senderID, receiverID, content)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to send message: %v", err)
@@ -72,9 +78,21 @@ func (h *GrpcHandler) SendMessage(ctx context.Context, req *pb.SendMessageReques
 		return nil, status.Errorf(codes.Internal, "failed to declare queue: %v", err)
 	}
 
+	msgData := map[string]interface{}{
+		"sourceLang": conv.GetTargetLanguage(),
+		"targetLang": conv.GetSourceLanguage(),
+		"messageID":  messageID,
+		"content":    content,
+	}
+
+	body, err := json.Marshal(msgData)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to marshal message to JSON: %v", err)
+	}
+
 	err = h.channel.PublishWithContext(ctx, "", q.Name, false, false, amqp.Publishing{
 		ContentType:  "application/json",
-		Body:         []byte("25"),
+		Body:         body,
 		DeliveryMode: amqp.Persistent,
 	})
 	if err != nil {
@@ -136,4 +154,26 @@ func (h *GrpcHandler) ListMessages(ctx context.Context, req *pb.ListMessagesRequ
 		NextPageToken: pageToken,
 	}
 	return resp, nil
+}
+
+func (h *GrpcHandler) GetConversation(ctx context.Context, req *pb.GetConversationRequest) (*pb.GetConversationResponse, error) {
+	conv, err := h.service.GetConversation(req.GetConversationId())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get conversation: %v", err)
+	}
+
+	return &pb.GetConversationResponse{Conversation: conv}, nil
+}
+
+func (h *GrpcHandler) ListConversations(ctx context.Context, req *pb.ListConversationsRequest) (*pb.ListConversationsResponse, error) {
+	if req.GetUserId() == "" {
+		return nil, status.Error(codes.InvalidArgument, "user_id must be provided")
+	}
+
+	conv, err := h.service.ListConversations(req.GetUserId())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to list conversations: %v", err)
+	}
+
+	return &pb.ListConversationsResponse{Conversations: conv}, nil
 }

@@ -28,11 +28,12 @@ func NewChatHandler(gateway gateway.ChatGateway) *ChatHandler {
 }
 
 func (h *ChatHandler) RegisterRoutes(router *mux.Router) {
-	router.HandleFunc("/api/v1/conversations", h.HandleCreateConversation).Methods("POST")
-	router.HandleFunc("/api/v1/conversations/{conversationId}/messages", h.HandleSendMessage).Methods("POST")
-	router.HandleFunc("/api/v1/conversations/{conversationId}/messages", h.HandleListMessages).Methods("GET")
-	router.HandleFunc("/api/v1/messages/{messageId}", h.HandleGetMessage).Methods("GET")
-	router.HandleFunc("/api/v1/conversations/{conversationId}/messages/stream", h.HandleStreamMessages).Methods("GET")
+	chatRouter := router.PathPrefix("/api/v1/conversations").Subrouter()
+	chatRouter.HandleFunc("", h.HandleCreateConversation).Methods("POST")
+	chatRouter.HandleFunc("/{conversationId}", h.HandleConversation).Methods("GET")
+	chatRouter.HandleFunc("/{conversationId}/messages", h.HandleSendMessage).Methods("POST")
+	chatRouter.HandleFunc("/{conversationId}/messages", h.HandleListMessages).Methods("GET")
+	chatRouter.HandleFunc("/{conversationId}/messages/stream", h.HandleStreamMessages).Methods("GET")
 }
 
 func (h *ChatHandler) HandleCreateConversation(w http.ResponseWriter, r *http.Request) {
@@ -58,6 +59,27 @@ func (h *ChatHandler) HandleCreateConversation(w http.ResponseWriter, r *http.Re
 	}
 
 	resp, err := h.gateway.CreateConversation(r.Context(), req)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, resp)
+}
+
+func (h *ChatHandler) HandleConversation(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	conversationId := vars["conversationId"]
+	if conversationId == "" {
+		utils.WriteError(w, http.StatusBadRequest, "conversationId is required")
+		return
+	}
+
+	req := &pb.GetConversationRequest{
+		ConversationId: conversationId,
+	}
+
+	resp, err := h.gateway.GetConversation(r.Context(), req)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -152,6 +174,7 @@ func (h *ChatHandler) HandleListMessages(w http.ResponseWriter, r *http.Request)
 	utils.WriteJSON(w, http.StatusOK, resp)
 }
 
+// HandleGetMessage This handler is not used yet.
 func (h *ChatHandler) HandleGetMessage(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	messageId := vars["messageId"]
