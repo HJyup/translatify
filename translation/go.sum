@@ -1,2 +1,8 @@
+github.com/hasitpbhatt/groq-go v0.0.0-20240827025556-4a829219bfe3 h1:ucWddcQwPvj5FmcGeNH6WAlWd63co//LgtSpB0xt0vk=
+github.com/hasitpbhatt/groq-go v0.0.0-20240827025556-4a829219bfe3/go.mod h1:ocG8BYghn3DX6bwZaFB0w/UXOS02Y+l3cjhib/EGUcs=
+github.com/patrickmn/go-cache v2.1.0+incompatible h1:HRMgzkcYKYpi3C8ajMPV8OFXaaRUnok+kx1WdO15EQc=
+github.com/patrickmn/go-cache v2.1.0+incompatible/go.mod h1:3Qf8kWWT7OJRJbdiICTKqZju1ZixQ/KpMGzzAfe6+WQ=
 github.com/rabbitmq/amqp091-go v1.10.0 h1:STpn5XsHlHGcecLmMFCtg7mqq0RnD+zFr4uzukfVhBw=
 github.com/rabbitmq/amqp091-go v1.10.0/go.mod h1:Hy4jKW5kQART1u+JkDTF9YYOQUHXqMuhrgxOEeS7G4o=
+github.com/sashabaranov/go-openai v1.37.0 h1:hQQowgYm4OXJ1Z/wTrE+XZaO20BYsL0R3uRPSpfNZkY=
+github.com/sashabaranov/go-openai v1.37.0/go.mod h1:lj5b/K+zjTSFxVLijLSTDZuP7adOgerWeFyZLUhAKRg=

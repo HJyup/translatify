@@ -35,7 +35,7 @@ func (c *Consumer) Listen(ch *amqp.Channel) {
 				panic(err)
 			}
 
-			trnResponse, err := c.service.TranslateMessage(msg.SourceLang, msg.TargetLang, msg.MessageID, msg.Content)
+			trnResponse, err := c.service.TranslateMessage(msg.Content, msg.SourceLang, msg.TargetLang)
 			if err != nil {
 				panic(err)
 			}

@@ -1,9 +1,5 @@
 package models
 
-import (
-	pb "github.com/HJyup/translatify-common/api"
-)
-
 type ConsumerResponse struct {
 	SourceLang string `json:"sourceLang"`
 	TargetLang string `json:"targetLang"`
@@ -11,6 +7,14 @@ type ConsumerResponse struct {
 	Content    string `json:"content"`
 }
 
+type TranslationResponse struct {
+	TranslatedContent string `json:"translatedContent"`
+}
+
 type TranslationService interface {
-	TranslateMessage(sourceLang, targetLang, messageID, content string) (pb.TranslationResponse, error)
+	TranslateMessage(content, sourceLanguage, targetLanguage string) (*TranslationResponse, error)
+}
+
+type TranslatorModel interface {
+	TranslateText(text, sourceLanguage, targetLanguage string) (string, error)
 }
