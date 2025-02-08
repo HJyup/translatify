@@ -5,14 +5,76 @@ services:
     ports:
       - "16686:16686"
       - "16687:16687"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:16686"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
   consul:
     image: hashicorp/consul:1.10.0
     command: agent -server -ui -node=server-1 -bootstrap-expect=1 -client=0.0.0.0
     ports:
       - "8500:8500"
       - "8600:8600/udp"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8500/v1/status/leader"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
   rabbitmq:
     image: rabbitmq:3.9.7-management
     ports:
       - "5672:5672"
       - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  chat:
+    build:
+      context: .
+      dockerfile: chat/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - JAEGER_AGENT_HOST=jaeger
+      - CONSUL_HTTP_ADDR=consul:8500
+      - RABBITMQ_HOST=rabbitmq
+    depends_on:
+      - jaeger
+      - consul
+      - rabbitmq
+
+  translation:
+    build:
+      context: .
+      dockerfile: translation/Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - JAEGER_AGENT_HOST=jaeger
+      - CONSUL_HTTP_ADDR=consul:8500
+      - RABBITMQ_HOST=rabbitmq
+    depends_on:
+      - jaeger
+      - consul
+      - rabbitmq
+
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      - JAEGER_AGENT_HOST=jaeger
+      - CONSUL_HTTP_ADDR=consul:8500
+      - RABBITMQ_HOST=rabbitmq
+    depends_on:
+      - jaeger
+      - consul
+      - rabbitmq

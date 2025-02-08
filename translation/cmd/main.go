@@ -3,6 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"net"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	"github.com/HJyup/translatify-common/broker"
 	"github.com/HJyup/translatify-common/discovery"
 	"github.com/HJyup/translatify-common/discovery/consul"
@@ -13,9 +20,6 @@ import (
 	"github.com/HJyup/translatify-translation/internal/service"
 	"github.com/HJyup/translatify-translation/internal/translator"
 	"google.golang.org/grpc"
-	"log"
-	"net"
-	"time"
 
 	_ "github.com/joho/godotenv/autoload"
 )
@@ -36,34 +40,53 @@ var (
 )
 
 func main() {
-	err := tracer.SetGlobalTracer(context.TODO(), serviceName, jaegerAddr)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Handle graceful shutdown
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigs
+		cancel()
+	}()
+
+	err := tracer.SetGlobalTracer(ctx, serviceName, jaegerAddr)
 	if err != nil {
 		log.Fatalf("Failed to set global tracer: %v", err)
 	}
 
 	registry, err := consul.NewRegistry(consulAddr, serviceName)
 	if err != nil {
-		panic(err)
+		log.Fatalf("Failed to create registry: %v", err)
 	}
 
-	ctx := context.Background()
 	instanceID := discovery.GenerateInstanceID(serviceName)
 	if err = registry.Register(ctx, instanceID, serviceName, grpcAddr); err != nil {
-		panic(err)
+		log.Fatalf("Failed to register service: %v", err)
 	}
 
 	ch, closeConn := broker.Connect(amqpUser, amqpPass, amqpHost, amqpPort)
 	defer func() {
-		_ = closeConn()
-		_ = ch.Close()
+		if err := closeConn(); err != nil {
+			log.Printf("Error closing connection: %v", err)
+		}
+		if err := ch.Close(); err != nil {
+			log.Printf("Error closing channel: %v", err)
+		}
 	}()
 
 	go func() {
 		for {
-			if err = registry.HealthCheck(instanceID, serviceName); err != nil {
-				log.Fatal("Failed to health check", err)
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				if err = registry.HealthCheck(instanceID, serviceName); err != nil {
+					log.Printf("Failed to health check: %v", err)
+				}
+				time.Sleep(1 * time.Second)
 			}
-			time.Sleep(1 * time.Second)
 		}
 	}()
 	defer registry.DeRegister(ctx, instanceID, serviceName)
@@ -71,7 +94,7 @@ func main() {
 	grpcServer := grpc.NewServer()
 	conn, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Fatalf("Failed to listen on %s: %v", grpcAddr, err)
 	}
 	defer conn.Close()
 
@@ -86,7 +109,6 @@ func main() {
 	fmt.Println("Starting gRPC server", grpcAddr)
 
 	if err = grpcServer.Serve(conn); err != nil {
-		log.Fatal(err)
+		log.Fatalf("Failed to serve gRPC: %v", err)
 	}
-
 }

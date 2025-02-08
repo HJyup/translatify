@@ -2,6 +2,13 @@ package main
 
 import (
 	"context"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	"github.com/HJyup/translatify-common/discovery"
 	"github.com/HJyup/translatify-common/discovery/consul"
 	"github.com/HJyup/translatify-common/tracer"
@@ -9,9 +16,6 @@ import (
 	"github.com/HJyup/translatify-gateway/internal/gateway"
 	"github.com/HJyup/translatify-gateway/internal/handlers"
 	mux2 "github.com/gorilla/mux"
-	"log"
-	"net/http"
-	"time"
 
 	_ "github.com/joho/godotenv/autoload"
 )
@@ -25,28 +29,43 @@ var (
 )
 
 func main() {
-	err := tracer.SetGlobalTracer(context.TODO(), serviceName, jaegerAddr)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Handle graceful shutdown
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigs
+		cancel()
+	}()
+
+	err := tracer.SetGlobalTracer(ctx, serviceName, jaegerAddr)
 	if err != nil {
 		log.Fatalf("Failed to set global tracer: %v", err)
 	}
 
 	registry, err := consul.NewRegistry(consulAddr, serviceName)
 	if err != nil {
-		panic(err)
+		log.Fatalf("Failed to create registry: %v", err)
 	}
 
-	ctx := context.Background()
 	instanceID := discovery.GenerateInstanceID(serviceName)
 	if err = registry.Register(ctx, instanceID, serviceName, httpAddr); err != nil {
-		panic(err)
+		log.Fatalf("Failed to register service: %v", err)
 	}
 
 	go func() {
 		for {
-			if err := registry.HealthCheck(instanceID, serviceName); err != nil {
-				log.Fatal("Failed to health check", err)
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				if err := registry.HealthCheck(instanceID, serviceName); err != nil {
+					log.Printf("Failed to health check: %v", err)
+				}
+				time.Sleep(1 * time.Second)
 			}
-			time.Sleep(1 * time.Second)
 		}
 	}()
 	defer registry.DeRegister(ctx, instanceID, serviceName)
@@ -60,6 +79,6 @@ func main() {
 	log.Println("Starting server on", httpAddr)
 
 	if err := http.ListenAndServe(httpAddr, mux); err != nil {
-		log.Fatal("Failed to start server", err)
+		log.Fatalf("Failed to start server: %v", err)
 	}
 }
