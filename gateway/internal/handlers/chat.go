@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"github.com/HJyup/translatify-gateway/internal/middleware"
 	"io"
 	"net/http"
 	"strconv"
@@ -29,6 +30,10 @@ func NewChatHandler(gateway gateway.ChatGateway) *ChatHandler {
 
 func (h *ChatHandler) RegisterRoutes(router *mux.Router) {
 	chatRouter := router.PathPrefix("/api/v1/conversations").Subrouter()
+	chatRouter.Use(middleware.EnsureValidToken())
+
+	chatRouter.Use(middleware.SetDefaultHeaders)
+
 	chatRouter.HandleFunc("", h.HandleCreateConversation).Methods("POST")
 	chatRouter.HandleFunc("/{conversationId}", h.HandleConversation).Methods("GET")
 	chatRouter.HandleFunc("/{conversationId}/messages", h.HandleSendMessage).Methods("POST")
