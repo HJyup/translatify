@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/HJyup/translatify-common/tracer"
 	"log"
 	"net"
 	"time"
@@ -29,9 +30,16 @@ var (
 	amqpHost    = common.EnvString("AMQP_HOST")
 	amqpPort    = common.EnvString("AMQP_PORT")
 	databaseURL = common.EnvString("DATABASE_URL")
+
+	jaegerAddr = common.EnvString("JAEGER_ADDR")
 )
 
 func main() {
+	err := tracer.SetGlobalTracer(context.TODO(), serviceName, jaegerAddr)
+	if err != nil {
+		log.Fatalf("Failed to set global tracer: %v", err)
+	}
+
 	registry, err := consul.NewRegistry(consulAddr, serviceName)
 	if err != nil {
 		panic(err)

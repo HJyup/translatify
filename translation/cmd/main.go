@@ -6,6 +6,7 @@ import (
 	"github.com/HJyup/translatify-common/broker"
 	"github.com/HJyup/translatify-common/discovery"
 	"github.com/HJyup/translatify-common/discovery/consul"
+	"github.com/HJyup/translatify-common/tracer"
 	common "github.com/HJyup/translatify-common/utils"
 	"github.com/HJyup/translatify-translation/internal/consumer"
 	"github.com/HJyup/translatify-translation/internal/handler"
@@ -30,9 +31,16 @@ var (
 	amqpPass = common.EnvString("AMQP_PASS")
 	amqpHost = common.EnvString("AMQP_HOST")
 	amqpPort = common.EnvString("AMQP_PORT")
+
+	jaegerAddr = common.EnvString("JAEGER_ADDR")
 )
 
 func main() {
+	err := tracer.SetGlobalTracer(context.TODO(), serviceName, jaegerAddr)
+	if err != nil {
+		log.Fatalf("Failed to set global tracer: %v", err)
+	}
+
 	registry, err := consul.NewRegistry(consulAddr, serviceName)
 	if err != nil {
 		panic(err)

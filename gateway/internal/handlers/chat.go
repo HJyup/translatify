@@ -2,7 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/HJyup/translatify-gateway/internal/middleware"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 	"io"
 	"net/http"
 	"strconv"
@@ -56,6 +59,10 @@ func (h *ChatHandler) HandleCreateConversation(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	tr := otel.Tracer("http")
+	ctx, span := tr.Start(r.Context(), fmt.Sprintf("%s %s", r.Method, r.RequestURI))
+	defer span.End()
+
 	req := &pb.CreateConversationRequest{
 		UserAId:        reqBody.UserAId,
 		UserBId:        reqBody.UserBId,
@@ -63,8 +70,9 @@ func (h *ChatHandler) HandleCreateConversation(w http.ResponseWriter, r *http.Re
 		TargetLanguage: reqBody.TargetLanguage,
 	}
 
-	resp, err := h.gateway.CreateConversation(r.Context(), req)
+	resp, err := h.gateway.CreateConversation(ctx, req)
 	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
 		utils.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -84,8 +92,13 @@ func (h *ChatHandler) HandleConversation(w http.ResponseWriter, r *http.Request)
 		ConversationId: conversationId,
 	}
 
-	resp, err := h.gateway.GetConversation(r.Context(), req)
+	tr := otel.Tracer("http")
+	ctx, span := tr.Start(r.Context(), fmt.Sprintf("%s %s", r.Method, r.RequestURI))
+	defer span.End()
+
+	resp, err := h.gateway.GetConversation(ctx, req)
 	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
 		utils.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -121,8 +134,13 @@ func (h *ChatHandler) HandleSendMessage(w http.ResponseWriter, r *http.Request) 
 		Content:        reqBody.Content,
 	}
 
-	resp, err := h.gateway.SendMessage(r.Context(), req)
+	tr := otel.Tracer("http")
+	ctx, span := tr.Start(r.Context(), fmt.Sprintf("%s %s", r.Method, r.RequestURI))
+	defer span.End()
+
+	resp, err := h.gateway.SendMessage(ctx, req)
 	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
 		utils.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -170,8 +188,13 @@ func (h *ChatHandler) HandleListMessages(w http.ResponseWriter, r *http.Request)
 		PageToken:      pageToken,
 	}
 
-	resp, err := h.gateway.ListMessages(r.Context(), req)
+	tr := otel.Tracer("http")
+	ctx, span := tr.Start(r.Context(), fmt.Sprintf("%s %s", r.Method, r.RequestURI))
+	defer span.End()
+
+	resp, err := h.gateway.ListMessages(ctx, req)
 	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
 		utils.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -188,9 +211,14 @@ func (h *ChatHandler) HandleGetMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tr := otel.Tracer("http")
+	ctx, span := tr.Start(r.Context(), fmt.Sprintf("%s %s", r.Method, r.RequestURI))
+	defer span.End()
+
 	req := &pb.GetMessageRequest{MessageId: messageId}
-	resp, err := h.gateway.GetMessage(r.Context(), req)
+	resp, err := h.gateway.GetMessage(ctx, req)
 	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
 		utils.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -217,8 +245,13 @@ func (h *ChatHandler) HandleStreamMessages(w http.ResponseWriter, r *http.Reques
 	}
 	defer conn.Close()
 
-	grpcStream, err := h.gateway.StreamMessages(r.Context(), req)
+	tr := otel.Tracer("http")
+	ctx, span := tr.Start(r.Context(), fmt.Sprintf("%s %s", r.Method, r.RequestURI))
+	defer span.End()
+
+	grpcStream, err := h.gateway.StreamMessages(ctx, req)
 	if err != nil {
+		span.SetStatus(codes.Error, err.Error())
 		conn.WriteJSON(map[string]string{"error": err.Error()})
 		return
 	}
