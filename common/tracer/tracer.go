@@ -31,7 +31,7 @@ func SetGlobalTracer(ctx context.Context, serviceName, exportedAddr string) erro
 	)
 
 	otel.SetTracerProvider(tp)
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+	otel.SetTextMapPropagator(propagation.TraceContext{})
 
 	return nil
 }
