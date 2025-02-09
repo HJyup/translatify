@@ -2,8 +2,6 @@
 
 import Navbar from "../components/navbar";
 import Hero from "../components/hero";
-import Features from "../components/features";
-import CTA from "../components/cta";
 import { motion } from "framer-motion";
 
 export default function Home() {
@@ -46,8 +44,6 @@ export default function Home() {
       <div className="relative z-10">
         <Navbar />
         <Hero />
-        <Features />
-        <CTA />
       </div>
     </div>
   );
