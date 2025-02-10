@@ -35,9 +35,9 @@ message Conversation {
   // Unique identifier for the conversation.
   string conversation_id = 1;
   // One participant in the conversation.
-  string user_a_id = 2;
+  string username_a = 2;
   // The other participant in the conversation.
-  string user_b_id = 3;
+  string username_b = 3;
   // Unix timestamp when the conversation was created.
   int64 created_at = 4;
   // The language code of the original content (e.g., "en" for English).
@@ -48,8 +48,8 @@ message Conversation {
 
 // CreateConversationRequest starts a new conversation between two users.
 message CreateConversationRequest {
-  string user_a_id = 1;
-  string user_b_id = 2;
+  string username_a = 1;
+  string username_b = 2;
   string source_language = 3;
   string target_language = 4;
 }
@@ -66,9 +66,9 @@ message SendMessageRequest {
   // Identifier for the conversation.
   string conversation_id = 1;
   // Identifier of the sender.
-  string sender_id = 2;
+  string sender_username = 2;
   // Identifier of the receiver.
-  string receiver_id = 3;
+  string receiver_username = 3;
   // The text content of the message.
   string content = 4;
 }
@@ -88,9 +88,9 @@ message ChatMessage {
   // Identifier of the conversation to which this message belongs.
   string conversation_id = 2;
   // The sender's user ID.
-  string sender_id = 3;
+  string sender_username = 3;
   // The receiver's user ID.
-  string receiver_id = 4;
+  string receiver_username = 4;
   // The original message content.
   string content = 5;
   // The translated content (if applicable).
@@ -142,7 +142,7 @@ message ListMessagesResponse {
 // ListConversationsRequest retrieves conversations for a given user.
 message ListConversationsRequest {
   // Identifier for the user.
-  string user_id = 1;
+  string username = 1;
 }
 
 // ListConversationsResponse returns a list of Conversations.

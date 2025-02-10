@@ -25,8 +25,8 @@ func (s *Service) CreateConversation(userA, userB, sourceLang, targetLang string
 	}
 	conv := &pb.Conversation{
 		ConversationId: uuid.New().String(),
-		UserAId:        userA,
-		UserBId:        userB,
+		UsernameA:      userA,
+		UsernameB:      userB,
 		CreatedAt:      time.Now().Unix(),
 		SourceLanguage: sourceLang,
 		TargetLanguage: targetLang,
@@ -40,8 +40,8 @@ func (s *Service) CreateConversation(userA, userB, sourceLang, targetLang string
 	return conversationID, nil
 }
 
-func (s *Service) SendMessage(conversationID, senderID, receiverID, content string) (string, error) {
-	if conversationID == "" || senderID == "" || receiverID == "" || content == "" {
+func (s *Service) SendMessage(conversationID, senderUsername, receiverName, content string) (string, error) {
+	if conversationID == "" || senderUsername == "" || receiverName == "" || content == "" {
 		return "", errors.New("conversationID, senderID, receiverID, and content are required")
 	}
 
@@ -51,8 +51,8 @@ func (s *Service) SendMessage(conversationID, senderID, receiverID, content stri
 	msg := &pb.ChatMessage{
 		MessageId:         messageID,
 		ConversationId:    conversationID,
-		SenderId:          senderID,
-		ReceiverId:        receiverID,
+		SenderUsername:    senderUsername,
+		ReceiverUsername:  receiverName,
 		Content:           content,
 		TranslatedContent: "",
 		Timestamp:         now,

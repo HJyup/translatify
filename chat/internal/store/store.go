@@ -25,15 +25,15 @@ func NewStore(dbConn *pgx.Conn) *Store {
 func (s *Store) CreateConversion(ctx context.Context, conv *pb.Conversation) (string, error) {
 	query := `
 		INSERT INTO conversations
-			(conversation_id, user_a_id, user_b_id, created_at, source_language, target_language)
+			(conversation_id, username_a, username_b, created_at, source_language, target_language)
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`
 
 	ts := time.Now().Unix()
 	_, err := s.dbConn.Exec(ctx, query,
 		conv.ConversationId,
-		conv.UserAId,
-		conv.UserBId,
+		conv.UsernameA,
+		conv.UsernameB,
 		ts,
 		conv.SourceLanguage,
 		conv.TargetLanguage,
@@ -44,7 +44,7 @@ func (s *Store) CreateConversion(ctx context.Context, conv *pb.Conversation) (st
 func (s *Store) AddMessage(ctx context.Context, msg *pb.ChatMessage) error {
 	query := `
 		INSERT INTO chat_messages
-			(message_id, conversation_id, sender_id, receiver_id, content, translated_content, timestamp, translated)
+			(message_id, conversation_id, sender_username, receiver_username, content, translated_content, timestamp, translated)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	`
 
@@ -52,8 +52,8 @@ func (s *Store) AddMessage(ctx context.Context, msg *pb.ChatMessage) error {
 	_, err := s.dbConn.Exec(ctx, query,
 		msg.MessageId,
 		msg.ConversationId,
-		msg.SenderId,
-		msg.ReceiverId,
+		msg.SenderUsername,
+		msg.ReceiverUsername,
 		msg.Content,
 		"",
 		ts,
@@ -64,7 +64,7 @@ func (s *Store) AddMessage(ctx context.Context, msg *pb.ChatMessage) error {
 
 func (s *Store) GetMessage(ctx context.Context, id string) (*pb.ChatMessage, error) {
 	query := `
-		SELECT message_id, conversation_id, sender_id, receiver_id, content, translated_content, timestamp, translated
+		SELECT message_id, conversation_id, sender_username, receiver_username, content, translated_content, timestamp, translated
 		FROM chat_messages
 		WHERE message_id = $1
 	`
@@ -84,7 +84,7 @@ func (s *Store) ListMessages(ctx context.Context, conversationID string, since *
 	}
 
 	query := `
-		SELECT message_id, conversation_id, sender_id, receiver_id, content, translated_content, timestamp, translated
+		SELECT message_id, conversation_id, sender_username, receiver_username, content, translated_content, timestamp, translated
 		FROM chat_messages
 		WHERE conversation_id = $1 AND timestamp > $2
 		ORDER BY timestamp ASC
@@ -119,7 +119,7 @@ func (s *Store) ListMessages(ctx context.Context, conversationID string, since *
 
 func (s *Store) GetConversation(ctx context.Context, id string) (*pb.Conversation, error) {
 	query := `
-		SELECT conversation_id, user_a_id, user_b_id, created_at, source_language, target_language
+		SELECT conversation_id, username_a, username_b, created_at, source_language, target_language
 		FROM conversations
 		WHERE conversation_id = $1
 	`
@@ -127,13 +127,13 @@ func (s *Store) GetConversation(ctx context.Context, id string) (*pb.Conversatio
 
 	var (
 		conversationID string
-		userAID        string
-		userBID        string
+		userNameA      string
+		userNameB      string
 		createdAt      int64
 		sourceLang     string
 		targetLang     string
 	)
-	if err := row.Scan(&conversationID, &userAID, &userBID, &createdAt, &sourceLang, &targetLang); err != nil {
+	if err := row.Scan(&conversationID, &userNameA, &userNameB, &createdAt, &sourceLang, &targetLang); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrConversationNotFound
 		}
@@ -142,8 +142,8 @@ func (s *Store) GetConversation(ctx context.Context, id string) (*pb.Conversatio
 
 	return &pb.Conversation{
 		ConversationId: conversationID,
-		UserAId:        userAID,
-		UserBId:        userBID,
+		UsernameA:      userNameA,
+		UsernameB:      userNameB,
 		CreatedAt:      createdAt,
 		SourceLanguage: sourceLang,
 		TargetLanguage: targetLang,
@@ -152,7 +152,7 @@ func (s *Store) GetConversation(ctx context.Context, id string) (*pb.Conversatio
 
 func (s *Store) ListConversations(ctx context.Context, userID string) ([]*pb.Conversation, error) {
 	query := `
-		SELECT conversation_id, user_a_id, user_b_id, created_at, source_language, target_language
+		SELECT conversation_id, username_a, username_b, created_at, source_language, target_language
 		FROM conversations
 		WHERE user_a_id = $1 OR user_b_id = $1
 	`
@@ -166,19 +166,19 @@ func (s *Store) ListConversations(ctx context.Context, userID string) ([]*pb.Con
 	for rows.Next() {
 		var (
 			conversationID string
-			userAID        string
-			userBID        string
+			userNameA      string
+			userNameB      string
 			createdAt      int64
 			sourceLang     string
 			targetLang     string
 		)
-		if err = rows.Scan(&conversationID, &userAID, &userBID, &createdAt, &sourceLang, &targetLang); err != nil {
+		if err = rows.Scan(&conversationID, &userNameA, &userNameB, &createdAt, &sourceLang, &targetLang); err != nil {
 			return nil, err
 		}
 		conversations = append(conversations, &pb.Conversation{
 			ConversationId: conversationID,
-			UserAId:        userAID,
-			UserBId:        userBID,
+			UsernameA:      userNameA,
+			UsernameB:      userNameB,
 			CreatedAt:      createdAt,
 			SourceLanguage: sourceLang,
 			TargetLanguage: targetLang,
@@ -199,15 +199,15 @@ func scanChatMessage(rs rowScanner) (*pb.ChatMessage, error) {
 	var (
 		messageID         string
 		conversationID    string
-		senderID          string
-		receiverID        string
+		senderUserName    string
+		receiverUserName  string
 		content           string
 		translatedContent string
 		ts                int64
 		translated        bool
 	)
 
-	if err := rs.Scan(&messageID, &conversationID, &senderID, &receiverID, &content, &translatedContent, &ts, &translated); err != nil {
+	if err := rs.Scan(&messageID, &conversationID, &senderUserName, &receiverUserName, &content, &translatedContent, &ts, &translated); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrMessageNotFound
 		}
@@ -217,8 +217,8 @@ func scanChatMessage(rs rowScanner) (*pb.ChatMessage, error) {
 	return &pb.ChatMessage{
 		MessageId:         messageID,
 		ConversationId:    conversationID,
-		SenderId:          senderID,
-		ReceiverId:        receiverID,
+		SenderUsername:    senderUserName,
+		ReceiverUsername:  receiverUserName,
 		Content:           content,
 		TranslatedContent: translatedContent,
 		Timestamp:         ts,
