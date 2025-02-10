@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/HJyup/translatify-gateway/internal/middleware"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/codes"
 	"io"
 	"net/http"
 	"strconv"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -33,15 +34,12 @@ func NewChatHandler(gateway gateway.ChatGateway) *ChatHandler {
 
 func (h *ChatHandler) RegisterRoutes(router *mux.Router) {
 	chatRouter := router.PathPrefix("/api/v1/conversations").Subrouter()
-	chatRouter.Use(middleware.EnsureValidToken())
 
-	chatRouter.Use(middleware.SetDefaultHeaders)
-
-	chatRouter.HandleFunc("", h.HandleCreateConversation).Methods("POST")
-	chatRouter.HandleFunc("/{conversationId}", h.HandleConversation).Methods("GET")
-	chatRouter.HandleFunc("/{conversationId}/messages", h.HandleSendMessage).Methods("POST")
-	chatRouter.HandleFunc("/{conversationId}/messages", h.HandleListMessages).Methods("GET")
-	chatRouter.HandleFunc("/{conversationId}/messages/stream", h.HandleStreamMessages).Methods("GET")
+	chatRouter.Handle("/{conversationId}", middleware.WithMiddleware(h.HandleConversation)).Methods("GET")
+	chatRouter.Handle("/{conversationId}/messages", middleware.WithMiddleware(h.HandleListMessages)).Methods("GET")
+	chatRouter.Handle("", middleware.WithMiddleware(h.HandleCreateConversation)).Methods("POST")
+	chatRouter.Handle("/{conversationId}/messages", middleware.WithMiddleware(h.HandleSendMessage)).Methods("POST")
+	chatRouter.Handle("/{conversationId}/messages/stream", middleware.WithMiddleware(h.HandleStreamMessages)).Methods("GET")
 }
 
 func (h *ChatHandler) HandleCreateConversation(w http.ResponseWriter, r *http.Request) {
