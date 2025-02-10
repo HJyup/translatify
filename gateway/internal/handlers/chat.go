@@ -33,7 +33,7 @@ func NewChatHandler(gateway gateway.ChatGateway) *ChatHandler {
 }
 
 func (h *ChatHandler) RegisterRoutes(router *mux.Router) {
-	chatRouter := router.PathPrefix("/api/v1/conversations").Subrouter()
+	chatRouter := router.PathPrefix("/api/v1/chat").Subrouter()
 
 	chatRouter.Handle("/{conversationId}", middleware.WithMiddleware(h.HandleConversation)).Methods("GET")
 	chatRouter.Handle("/{conversationId}/messages", middleware.WithMiddleware(h.HandleListMessages)).Methods("GET")
@@ -62,8 +62,8 @@ func (h *ChatHandler) HandleCreateConversation(w http.ResponseWriter, r *http.Re
 	defer span.End()
 
 	req := &pb.CreateConversationRequest{
-		UserAId:        reqBody.UserAId,
-		UserBId:        reqBody.UserBId,
+		UsernameA:      reqBody.UserAId,
+		UsernameB:      reqBody.UserBId,
 		SourceLanguage: reqBody.SourceLanguage,
 		TargetLanguage: reqBody.TargetLanguage,
 	}
@@ -126,10 +126,10 @@ func (h *ChatHandler) HandleSendMessage(w http.ResponseWriter, r *http.Request) 
 	}
 
 	req := &pb.SendMessageRequest{
-		ConversationId: conversationId,
-		SenderId:       reqBody.FromUserID,
-		ReceiverId:     reqBody.ToUserID,
-		Content:        reqBody.Content,
+		ConversationId:   conversationId,
+		SenderUsername:   reqBody.FromUserID,
+		ReceiverUsername: reqBody.ToUserID,
+		Content:          reqBody.Content,
 	}
 
 	tr := otel.Tracer("http")
