@@ -38,12 +38,10 @@ services:
     build:
       context: .
       dockerfile: chat/Dockerfile
+    env_file:
+      - chat/.env
     ports:
-      - "8080:8080"
-    environment:
-      - JAEGER_AGENT_HOST=jaeger
-      - CONSUL_HTTP_ADDR=consul:8500
-      - RABBITMQ_HOST=rabbitmq
+      - "50051:50051"
     depends_on:
       - jaeger
       - consul
@@ -53,12 +51,10 @@ services:
     build:
       context: .
       dockerfile: translation/Dockerfile
+    env_file:
+      - translation/.env
     ports:
-      - "8081:8081"
-    environment:
-      - JAEGER_AGENT_HOST=jaeger
-      - CONSUL_HTTP_ADDR=consul:8500
-      - RABBITMQ_HOST=rabbitmq
+      - "4200:4200"
     depends_on:
       - jaeger
       - consul
@@ -68,12 +64,10 @@ services:
     build:
       context: .
       dockerfile: gateway/Dockerfile
+    env_file:
+      - gateway/.env
     ports:
-      - "8082:8082"
-    environment:
-      - JAEGER_AGENT_HOST=jaeger
-      - CONSUL_HTTP_ADDR=consul:8500
-      - RABBITMQ_HOST=rabbitmq
+      - "8080:8080"
     depends_on:
       - jaeger
       - consul
