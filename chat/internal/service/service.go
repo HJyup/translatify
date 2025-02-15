@@ -19,12 +19,12 @@ func NewService(store models.ChatStore) *Service {
 	return &Service{store: store}
 }
 
-func (s *Service) CreateConversation(userA, userB, sourceLang, targetLang string) (string, error) {
+func (s *Service) CreateChat(userA, userB, sourceLang, targetLang string) (string, error) {
 	if userA == "" || userB == "" || sourceLang == "" || targetLang == "" {
 		return "", errors.New("userA, userB, sourceLang, and targetLang are required")
 	}
-	conv := &pb.Conversation{
-		ConversationId: uuid.New().String(),
+	conv := &pb.Chat{
+		ChatId:         uuid.New().String(),
 		UsernameA:      userA,
 		UsernameB:      userB,
 		CreatedAt:      time.Now().Unix(),
@@ -32,17 +32,17 @@ func (s *Service) CreateConversation(userA, userB, sourceLang, targetLang string
 		TargetLanguage: targetLang,
 	}
 
-	conversationID, err := s.store.CreateConversion(context.Background(), conv)
+	chatID, err := s.store.CreateConversion(context.Background(), conv)
 	if err != nil {
 		return "", err
 	}
 
-	return conversationID, nil
+	return chatID, nil
 }
 
-func (s *Service) SendMessage(conversationID, senderUsername, receiverName, content string) (string, error) {
-	if conversationID == "" || senderUsername == "" || receiverName == "" || content == "" {
-		return "", errors.New("conversationID, senderID, receiverID, and content are required")
+func (s *Service) SendMessage(chatID, senderUsername, receiverName, content string) (string, error) {
+	if chatID == "" || senderUsername == "" || receiverName == "" || content == "" {
+		return "", errors.New("chatID, senderID, receiverID, and content are required")
 	}
 
 	messageID := uuid.New().String()
@@ -50,7 +50,7 @@ func (s *Service) SendMessage(conversationID, senderUsername, receiverName, cont
 
 	msg := &pb.ChatMessage{
 		MessageId:         messageID,
-		ConversationId:    conversationID,
+		ChatId:            chatID,
 		SenderUsername:    senderUsername,
 		ReceiverUsername:  receiverName,
 		Content:           content,
@@ -73,16 +73,16 @@ func (s *Service) GetMessage(messageID string) (*pb.ChatMessage, error) {
 	return s.store.GetMessage(context.Background(), messageID)
 }
 
-func (s *Service) ListMessages(conversationID string, since *timestamp.Timestamp, limit int, pageToken string) ([]*pb.ChatMessage, string, error) {
-	if conversationID == "" {
-		return nil, "", errors.New("conversationID is required")
+func (s *Service) ListMessages(chatID string, since *timestamp.Timestamp, limit int, pageToken string) ([]*pb.ChatMessage, string, error) {
+	if chatID == "" {
+		return nil, "", errors.New("chatID is required")
 	}
-	return s.store.ListMessages(context.Background(), conversationID, since, limit, pageToken)
+	return s.store.ListMessages(context.Background(), chatID, since, limit, pageToken)
 }
 
-func (s *Service) StreamMessages(ctx context.Context, conversationID string) (<-chan *pb.ChatMessage, error) {
-	if conversationID == "" {
-		return nil, errors.New("conversationID is required")
+func (s *Service) StreamMessages(ctx context.Context, chatID string) (<-chan *pb.ChatMessage, error) {
+	if chatID == "" {
+		return nil, errors.New("chatID is required")
 	}
 
 	out := make(chan *pb.ChatMessage)
@@ -99,7 +99,7 @@ func (s *Service) StreamMessages(ctx context.Context, conversationID string) (<-
 				return
 			case <-ticker.C:
 				since := &timestamp.Timestamp{Seconds: startTime}
-				messages, _, err := s.store.ListMessages(context.Background(), conversationID, since, 100, "")
+				messages, _, err := s.store.ListMessages(context.Background(), chatID, since, 100, "")
 				if err != nil {
 					// In production, you might want to log this error.
 					continue
@@ -121,16 +121,16 @@ func (s *Service) StreamMessages(ctx context.Context, conversationID string) (<-
 	return out, nil
 }
 
-func (s *Service) GetConversation(conversationID string) (*pb.Conversation, error) {
-	if conversationID == "" {
-		return nil, errors.New("conversationID is required")
+func (s *Service) GetChat(chatID string) (*pb.Chat, error) {
+	if chatID == "" {
+		return nil, errors.New("chatID is required")
 	}
-	return s.store.GetConversation(context.Background(), conversationID)
+	return s.store.GetChat(context.Background(), chatID)
 }
 
-func (s *Service) ListConversations(userID string) ([]*pb.Conversation, error) {
+func (s *Service) ListChats(userID string) ([]*pb.Chat, error) {
 	if userID == "" {
 		return nil, errors.New("userID is required")
 	}
-	return s.store.ListConversations(context.Background(), userID)
+	return s.store.ListChats(context.Background(), userID)
 }

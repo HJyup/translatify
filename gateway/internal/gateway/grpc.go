@@ -16,13 +16,13 @@ func NewGateway(registry discovery.Registry) *Gateway {
 	return &Gateway{registry: registry}
 }
 
-func (g *Gateway) CreateConversation(ctx context.Context, payload *pb.CreateConversationRequest) (*pb.CreateConversationResponse, error) {
+func (g *Gateway) CreateChat(ctx context.Context, payload *pb.CreateChatRequest) (*pb.CreateChatResponse, error) {
 	conn, err := discovery.ServiceConnection(ctx, "chat", g.registry)
 	if err != nil {
 		log.Fatal("Failed to connect to chat service")
 	}
 	chatClient := pb.NewChatServiceClient(conn)
-	return chatClient.CreateConversation(ctx, payload)
+	return chatClient.CreateChat(ctx, payload)
 }
 
 func (g *Gateway) SendMessage(ctx context.Context, payload *pb.SendMessageRequest) (*pb.SendMessageResponse, error) {
@@ -62,20 +62,20 @@ func (g *Gateway) StreamMessages(ctx context.Context, payload *pb.StreamMessages
 	return chatClient.StreamMessages(ctx, payload)
 }
 
-func (g *Gateway) GetConversation(ctx context.Context, payload *pb.GetConversationRequest) (*pb.GetConversationResponse, error) {
+func (g *Gateway) GetChat(ctx context.Context, payload *pb.GetChatRequest) (*pb.GetChatResponse, error) {
 	conn, err := discovery.ServiceConnection(ctx, "chat", g.registry)
 	if err != nil {
 		log.Fatal("Failed to connect to chat service")
 	}
 	chatClient := pb.NewChatServiceClient(conn)
-	return chatClient.GetConversation(ctx, payload)
+	return chatClient.GetChat(ctx, payload)
 }
 
-func (g *Gateway) ListConversations(ctx context.Context, payload *pb.ListConversationsRequest) (*pb.ListConversationsResponse, error) {
+func (g *Gateway) ListChats(ctx context.Context, payload *pb.ListChatsRequest) (*pb.ListChatsResponse, error) {
 	conn, err := discovery.ServiceConnection(ctx, "chat", g.registry)
 	if err != nil {
 		log.Fatal("Failed to connect to chat service")
 	}
 	chatClient := pb.NewChatServiceClient(conn)
-	return chatClient.ListConversations(ctx, payload)
+	return chatClient.ListChats(ctx, payload)
 }

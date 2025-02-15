@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/HJyup/translatify-gateway/internal/middleware"
 	"io"
 	"net/http"
 	"strconv"
@@ -33,17 +32,17 @@ func NewChatHandler(gateway gateway.ChatGateway) *ChatHandler {
 }
 
 func (h *ChatHandler) RegisterRoutes(router *mux.Router) {
-	chatRouter := router.PathPrefix("/api/v1/chat").Subrouter()
+	chatRouter := router.PathPrefix("/api/v1/chats").Subrouter()
 
-	chatRouter.Handle("/{conversationId}", middleware.WithMiddleware(h.HandleConversation)).Methods("GET")
-	chatRouter.Handle("/{conversationId}/messages", middleware.WithMiddleware(h.HandleListMessages)).Methods("GET")
-	chatRouter.Handle("", middleware.WithMiddleware(h.HandleCreateConversation)).Methods("POST")
-	chatRouter.Handle("/{conversationId}/messages", middleware.WithMiddleware(h.HandleSendMessage)).Methods("POST")
-	chatRouter.Handle("/{conversationId}/messages/stream", middleware.WithMiddleware(h.HandleStreamMessages)).Methods("GET")
+	chatRouter.HandleFunc("/{chatId}", h.HandleChat).Methods("GET")
+	chatRouter.HandleFunc("/{chatId}/messages", h.HandleListMessages).Methods("GET")
+	chatRouter.HandleFunc("", h.HandleCreateChat).Methods("POST")
+	chatRouter.HandleFunc("/{chatId}/messages", h.HandleSendMessage).Methods("POST")
+	chatRouter.HandleFunc("/{chatId}/messages/stream", h.HandleStreamMessages).Methods("GET")
 }
 
-func (h *ChatHandler) HandleCreateConversation(w http.ResponseWriter, r *http.Request) {
-	var reqBody models.CreateConversationRequest
+func (h *ChatHandler) HandleCreateChat(w http.ResponseWriter, r *http.Request) {
+	var reqBody models.CreateChatRequest
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -61,14 +60,14 @@ func (h *ChatHandler) HandleCreateConversation(w http.ResponseWriter, r *http.Re
 	ctx, span := tr.Start(r.Context(), fmt.Sprintf("%s %s", r.Method, r.RequestURI))
 	defer span.End()
 
-	req := &pb.CreateConversationRequest{
+	req := &pb.CreateChatRequest{
 		UsernameA:      reqBody.UserAId,
 		UsernameB:      reqBody.UserBId,
 		SourceLanguage: reqBody.SourceLanguage,
 		TargetLanguage: reqBody.TargetLanguage,
 	}
 
-	resp, err := h.gateway.CreateConversation(ctx, req)
+	resp, err := h.gateway.CreateChat(ctx, req)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		utils.WriteError(w, http.StatusInternalServerError, err.Error())
@@ -78,23 +77,23 @@ func (h *ChatHandler) HandleCreateConversation(w http.ResponseWriter, r *http.Re
 	utils.WriteJSON(w, http.StatusOK, resp)
 }
 
-func (h *ChatHandler) HandleConversation(w http.ResponseWriter, r *http.Request) {
+func (h *ChatHandler) HandleChat(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	conversationId := vars["conversationId"]
-	if conversationId == "" {
-		utils.WriteError(w, http.StatusBadRequest, "conversationId is required")
+	ChatId := vars["ChatId"]
+	if ChatId == "" {
+		utils.WriteError(w, http.StatusBadRequest, "ChatId is required")
 		return
 	}
 
-	req := &pb.GetConversationRequest{
-		ConversationId: conversationId,
+	req := &pb.GetChatRequest{
+		ChatId: ChatId,
 	}
 
 	tr := otel.Tracer("http")
 	ctx, span := tr.Start(r.Context(), fmt.Sprintf("%s %s", r.Method, r.RequestURI))
 	defer span.End()
 
-	resp, err := h.gateway.GetConversation(ctx, req)
+	resp, err := h.gateway.GetChat(ctx, req)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		utils.WriteError(w, http.StatusInternalServerError, err.Error())
@@ -106,9 +105,9 @@ func (h *ChatHandler) HandleConversation(w http.ResponseWriter, r *http.Request)
 
 func (h *ChatHandler) HandleSendMessage(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	conversationId := vars["conversationId"]
-	if conversationId == "" {
-		utils.WriteError(w, http.StatusBadRequest, "conversationId is required")
+	chatId := vars["chatId"]
+	if chatId == "" {
+		utils.WriteError(w, http.StatusBadRequest, "chatId is required")
 		return
 	}
 
@@ -126,7 +125,7 @@ func (h *ChatHandler) HandleSendMessage(w http.ResponseWriter, r *http.Request) 
 	}
 
 	req := &pb.SendMessageRequest{
-		ConversationId:   conversationId,
+		ChatId:           chatId,
 		SenderUsername:   reqBody.FromUserID,
 		ReceiverUsername: reqBody.ToUserID,
 		Content:          reqBody.Content,
@@ -148,9 +147,9 @@ func (h *ChatHandler) HandleSendMessage(w http.ResponseWriter, r *http.Request) 
 
 func (h *ChatHandler) HandleListMessages(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	conversationId := vars["conversationId"]
-	if conversationId == "" {
-		utils.WriteError(w, http.StatusBadRequest, "conversationId is required")
+	chatId := vars["chatId"]
+	if chatId == "" {
+		utils.WriteError(w, http.StatusBadRequest, "chatId is required")
 		return
 	}
 
@@ -180,7 +179,7 @@ func (h *ChatHandler) HandleListMessages(w http.ResponseWriter, r *http.Request)
 	}
 
 	req := &pb.ListMessagesRequest{
-		ConversationId: conversationId,
+		ChatId:         chatId,
 		SinceTimestamp: sinceTimestamp,
 		Limit:          limit,
 		PageToken:      pageToken,
@@ -226,14 +225,14 @@ func (h *ChatHandler) HandleGetMessage(w http.ResponseWriter, r *http.Request) {
 
 func (h *ChatHandler) HandleStreamMessages(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	conversationId := vars["conversationId"]
-	if conversationId == "" {
-		utils.WriteError(w, http.StatusBadRequest, "conversationId is required")
+	chatId := vars["chatId"]
+	if chatId == "" {
+		utils.WriteError(w, http.StatusBadRequest, "chatId is required")
 		return
 	}
 
 	req := &pb.StreamMessagesRequest{
-		ConversationId: conversationId,
+		ChatId: chatId,
 	}
 
 	conn, err := upgrader.Upgrade(w, r, nil)

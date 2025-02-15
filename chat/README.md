@@ -9,7 +9,7 @@ The **Chat Service** is a microservice responsible for handling one-to-one text 
 ## Features
 - **One-to-One Messaging:** Users can send direct messages to each other.
 - **Real-Time Updates:** Subscribe to a server-streaming endpoint for live message updates.
-- **Message Retrieval:** Retrieve specific messages or list conversation history.
+- **Message Retrieval:** Retrieve specific messages or list chat history.
 - **RabbitMQ Integration:** Supports asynchronous message processing.
 - **Database Support:** Uses PostgreSQL for message storage.
 - **Service Discovery:** Registers with Consul for service lookup.

@@ -4,41 +4,41 @@ option go_package = "github.com/HJyup/translatify/api";
 
 package api;
 
-// ChatService uses Conversation as the primary unit of a chat.
-// Each Conversation holds two user IDs and a unique conversation_id.
-// Messages belong to a conversation.
+// ChatService uses Chat as the primary unit of a chat.
+// Each Chat holds two user IDs and a unique Chat_id.
+// Messages belong to a Chat.
 service ChatService {
-  // CreateConversation creates a new conversation between two users.
-  rpc CreateConversation(CreateConversationRequest) returns (CreateConversationResponse);
+  // CreateChat creates a new Chat between two users.
+  rpc CreateChat(CreateChatRequest) returns (CreateChatResponse);
 
-  // SendMessage sends a text message within an existing conversation.
+  // SendMessage sends a text message within an existing Chat.
   rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
 
-  // StreamMessages streams new messages for a given conversation.
+  // StreamMessages streams new messages for a given Chat.
   rpc StreamMessages(StreamMessagesRequest) returns (stream ChatMessage);
 
   // GetMessage retrieves a specific message by its message_id.
   rpc GetMessage(GetMessageRequest) returns (GetMessageResponse);
 
-  // ListMessages retrieves a list of messages in a conversation.
+  // ListMessages retrieves a list of messages in a Chat.
   rpc ListMessages(ListMessagesRequest) returns (ListMessagesResponse);
 
-  // ListConversations retrieves a list of conversations for a given user.
-  rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);
+  // ListChats retrieves a list of Chats for a given user.
+  rpc ListChats(ListChatsRequest) returns (ListChatsResponse);
 
-  // GetConversation retrieves a specific conversation by its conversation_id.
-  rpc GetConversation(GetConversationRequest) returns (GetConversationResponse);
+  // GetChat retrieves a specific Chat by its Chat_id.
+  rpc GetChat(GetChatRequest) returns (GetChatResponse);
 }
 
-// Conversation represents a chat between two users.
-message Conversation {
-  // Unique identifier for the conversation.
-  string conversation_id = 1;
-  // One participant in the conversation.
+// Chat represents a chat between two users.
+message Chat {
+  // Unique identifier for the Chat.
+  string Chat_id = 1;
+  // One participant in the Chat.
   string username_a = 2;
-  // The other participant in the conversation.
+  // The other participant in the Chat.
   string username_b = 3;
-  // Unix timestamp when the conversation was created.
+  // Unix timestamp when the Chat was created.
   int64 created_at = 4;
   // The language code of the original content (e.g., "en" for English).
   string source_language = 7;
@@ -46,25 +46,25 @@ message Conversation {
   string target_language = 8;
 }
 
-// CreateConversationRequest starts a new conversation between two users.
-message CreateConversationRequest {
+// CreateChatRequest starts a new Chat between two users.
+message CreateChatRequest {
   string username_a = 1;
   string username_b = 2;
   string source_language = 3;
   string target_language = 4;
 }
 
-// CreateConversationResponse returns the created Conversation.
-message CreateConversationResponse {
+// CreateChatResponse returns the created Chat.
+message CreateChatResponse {
   bool success = 1;
-  string conversation_id = 2;
+  string chat_id = 2;
   string error = 3;
 }
 
-// SendMessageRequest sends a message in a conversation.
+// SendMessageRequest sends a message in a Chat.
 message SendMessageRequest {
-  // Identifier for the conversation.
-  string conversation_id = 1;
+  // Identifier for the Chat.
+  string chat_id = 1;
   // Identifier of the sender.
   string sender_username = 2;
   // Identifier of the receiver.
@@ -81,12 +81,12 @@ message SendMessageResponse {
   string error = 3;
 }
 
-// ChatMessage represents a message in a conversation.
+// ChatMessage represents a message in a Chat.
 message ChatMessage {
   // Unique identifier for the message.
   string message_id = 1;
-  // Identifier of the conversation to which this message belongs.
-  string conversation_id = 2;
+  // Identifier of the Chat to which this message belongs.
+  string chat_id = 2;
   // The sender's user ID.
   string sender_username = 3;
   // The receiver's user ID.
@@ -101,10 +101,10 @@ message ChatMessage {
   bool translated = 8;
 }
 
-// StreamMessagesRequest subscribes to new messages in a conversation.
+// StreamMessagesRequest subscribes to new messages in a Chat.
 message StreamMessagesRequest {
-  // Identifier for the conversation.
-  string conversation_id = 1;
+  // Identifier for the Chat.
+  string chat_id = 1;
 }
 
 // GetMessageRequest retrieves a specific message by its ID.
@@ -118,10 +118,10 @@ message GetMessageResponse {
   string error = 2;
 }
 
-// ListMessagesRequest retrieves messages from a conversation with optional pagination.
+// ListMessagesRequest retrieves messages from a Chat with optional pagination.
 message ListMessagesRequest {
-  // Identifier for the conversation.
-  string conversation_id = 1;
+  // Identifier for the Chat.
+  string chat_id = 1;
   // Filter to only include messages after a given timestamp.
   int64 since_timestamp = 2;
   // Maximum number of messages to return.
@@ -132,33 +132,33 @@ message ListMessagesRequest {
 
 // ListMessagesResponse returns a list of ChatMessages.
 message ListMessagesResponse {
-  // The list of messages in the conversation.
+  // The list of messages in the Chat.
   repeated ChatMessage messages = 1;
   // A token that can be used to retrieve the next page of results.
   string next_page_token = 2;
   string error = 3;
 }
 
-// ListConversationsRequest retrieves conversations for a given user.
-message ListConversationsRequest {
+// ListChatsRequest retrieves Chats for a given user.
+message ListChatsRequest {
   // Identifier for the user.
   string username = 1;
 }
 
-// ListConversationsResponse returns a list of Conversations.
-message ListConversationsResponse {
-  // The list of conversations for the user.
-  repeated Conversation conversations = 1;
+// ListChatsResponse returns a list of Chats.
+message ListChatsResponse {
+  // The list of Chats for the user.
+  repeated Chat chats = 1;
   string error = 2;
 }
 
-// GetConversationRequest retrieves a specific conversation by its ID.
-message GetConversationRequest {
-  string conversation_id = 1;
+// GetChatRequest retrieves a specific Chat by its ID.
+message GetChatRequest {
+  string chat_id = 1;
 }
 
-// GetConversationResponse returns a single Conversation.
-message GetConversationResponse {
-  Conversation conversation = 1;
+// GetChatResponse returns a single Chat.
+message GetChatResponse {
+  Chat chat = 1;
   string error = 2;
 }

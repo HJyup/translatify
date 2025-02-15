@@ -1,6 +1,6 @@
 package models
 
-type CreateConversationRequest struct {
+type CreateChatRequest struct {
 	UserAId        string `json:"userAId"`
 	UserBId        string `json:"userBId"`
 	SourceLanguage string `json:"sourceLanguage"`
@@ -20,6 +20,6 @@ type ListMessagesRequest struct {
 }
 
 type StreamMessagesRequest struct {
-	ConversationId string `json:"conversationId"`
+	ChatId         string `json:"chatId"`
 	SinceTimestamp int64  `json:"sinceTimestamp"`
 }

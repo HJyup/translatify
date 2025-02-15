@@ -4,7 +4,7 @@ services:
     image: jaegertracing/all-in-one:latest
     ports:
       - "16686:16686"
-      - "16687:16687"
+      - "4318:4318"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:16686"]
       interval: 30s
@@ -34,6 +34,17 @@ services:
       timeout: 10s
       retries: 5
 
+  db:
+    image: postgres:14-alpine
+    ports:
+      - "5432:5432"
+    volumes:
+      - ~/apps/postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=translatify_pass
+      - POSTGRES_USER=translatify_user
+      - POSTGRES_DB=translatify
+
   chat:
     build:
       context: .
@@ -46,6 +57,7 @@ services:
       - jaeger
       - consul
       - rabbitmq
+      - db
 
   translation:
     build:
@@ -59,6 +71,7 @@ services:
       - jaeger
       - consul
       - rabbitmq
+      - db
 
   gateway:
     build:
@@ -72,3 +85,4 @@ services:
       - jaeger
       - consul
       - rabbitmq
+      - db

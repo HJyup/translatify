@@ -18,7 +18,7 @@ export default function Hero() {
           with <span className="text-gradient">Translatify</span>
         </h1>
         <p className="mx-auto max-w-[42rem] text-lg leading-relaxed text-foreground/70 sm:text-xl sm:leading-8">
-          Focus on the conversation, not the translation.
+          Focus on the Chat, not the translation.
         </p>
         <div className="flex justify-center gap-4">
           <LoginButton />

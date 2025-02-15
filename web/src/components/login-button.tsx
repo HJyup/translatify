@@ -1,20 +1,22 @@
 "use client";
 
 import { ArrowRight } from "lucide-react";
-import { buttonVariants } from "./ui/button";
-
+import { Button, buttonVariants } from "./ui/button";
+import { useRouter } from "next/navigation";
 const LoginButton = () => {
+  const router = useRouter();
+
   return (
-    <a
-      href="/api/auth/login"
+    <Button
       className={buttonVariants({
         size: "lg",
         className: "shadow-lg hover:shadow-xl transition-shadow"
       })}
+      onClick={() => router.push("/login")}
     >
       Try It Now
       <ArrowRight className="ml-2 h-4 w-4" />
-    </a>
+    </Button>
   );
 };
 
