@@ -1,7 +1,6 @@
 package consul
 
 import (
-	"context"
 	"errors"
 	consul "github.com/hashicorp/consul/api"
 	"log"
@@ -13,7 +12,7 @@ type Registry struct {
 	client *consul.Client
 }
 
-func NewRegistry(addr, serviceName string) (*Registry, error) {
+func NewRegistry(addr string) (*Registry, error) {
 	config := consul.DefaultConfig()
 	config.Address = addr
 
@@ -25,7 +24,7 @@ func NewRegistry(addr, serviceName string) (*Registry, error) {
 	return &Registry{client: client}, nil
 }
 
-func (r Registry) Register(ctx context.Context, instanceID, serverName, hostPort string) error {
+func (r Registry) Register(instanceID, serverName, hostPort string) error {
 	parts := strings.Split(hostPort, ":")
 	if len(parts) != 2 {
 		return errors.New("invalid hostPort")
@@ -52,12 +51,12 @@ func (r Registry) Register(ctx context.Context, instanceID, serverName, hostPort
 	})
 }
 
-func (r Registry) DeRegister(ctx context.Context, instanceID, serverName string) error {
+func (r Registry) DeRegister(instanceID string) error {
 	log.Println("DeRegistering service with ID:", instanceID)
 	return r.client.Agent().ServiceDeregister(instanceID)
 }
 
-func (r Registry) Discover(ctx context.Context, serverName string) ([]string, error) {
+func (r Registry) Discover(serverName string) ([]string, error) {
 	entries, _, err := r.client.Health().Service(serverName, "", true, nil)
 	if err != nil {
 		return nil, err
@@ -71,6 +70,6 @@ func (r Registry) Discover(ctx context.Context, serverName string) ([]string, er
 	return instances, nil
 }
 
-func (r Registry) HealthCheck(instanceID, serverName string) error {
+func (r Registry) HealthCheck(instanceID string) error {
 	return r.client.Agent().UpdateTTL(instanceID, "online", "pass")
 }

@@ -34,11 +34,11 @@ func NewChatHandler(gateway chat.Gateway) *ChatHandler {
 func (h *ChatHandler) RegisterRoutes(router *mux.Router) {
 	chatRouter := router.PathPrefix("/api/v1/chats").Subrouter()
 
-	chatRouter.HandleFunc("/{chatId}", h.HandleChat).Methods("GET")
-	chatRouter.HandleFunc("/{chatId}/messages", h.HandleListMessages).Methods("GET")
-	chatRouter.HandleFunc("", h.HandleCreateChat).Methods("POST")
-	chatRouter.HandleFunc("/{chatId}/messages", h.HandleSendMessage).Methods("POST")
-	chatRouter.HandleFunc("/{chatId}/messages/stream", h.HandleStreamMessages).Methods("GET")
+	chatRouter.Handle("/{chatId}", utils.TokenAuthMiddleware(http.HandlerFunc(h.HandleChat))).Methods("GET")
+	chatRouter.Handle("/{chatId}/messages", utils.TokenAuthMiddleware(http.HandlerFunc(h.HandleListMessages))).Methods("GET")
+	chatRouter.Handle("", utils.TokenAuthMiddleware(http.HandlerFunc(h.HandleCreateChat))).Methods("POST")
+	chatRouter.Handle("/{chatId}/messages", utils.TokenAuthMiddleware(http.HandlerFunc(h.HandleSendMessage))).Methods("POST")
+	chatRouter.Handle("/{chatId}/messages/stream", utils.TokenAuthMiddleware(http.HandlerFunc(h.HandleStreamMessages))).Methods("GET")
 }
 
 func (h *ChatHandler) HandleCreateChat(w http.ResponseWriter, r *http.Request) {

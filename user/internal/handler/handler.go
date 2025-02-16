@@ -23,42 +23,30 @@ func NewGrpcHandler(grpcServer *grpc.Server, service models.UserService) {
 }
 
 func (h *GrpcHandler) CreateUser(ctx context.Context, req *pb.CreateUserRequest) (*pb.CreateUserResponse, error) {
-	user, err := h.service.CreateUser(
+	token, err := h.service.CreateUser(
 		req.GetUsername(),
 		req.GetEmail(),
-		req.GetFullName(),
 		req.GetPassword(),
 	)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create user: %v", err)
 	}
 	return &pb.CreateUserResponse{
-		User: user,
+		Token: token,
 	}, nil
 }
 
 func (h *GrpcHandler) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.GetUserResponse, error) {
-	user, err := h.service.GetUser(req.GetUserId())
+	user, err := h.service.GetUser(req.GetUsername())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get user: %v", err)
 	}
 	return &pb.GetUserResponse{
-		User: user,
-	}, nil
-}
-
-func (h *GrpcHandler) UpdateUser(ctx context.Context, req *pb.UpdateUserRequest) (*pb.UpdateUserResponse, error) {
-	user, err := h.service.UpdateUser(
-		req.GetUsername(),
-		req.GetEmail(),
-		req.GetFullName(),
-		req.GetPassword(),
-	)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to update user: %v", err)
-	}
-	return &pb.UpdateUserResponse{
-		User: user,
+		User: &pb.User{
+			Username:  user.Username,
+			Email:     user.Email,
+			CreatedAt: user.CreatedAt.Unix(),
+		},
 	}, nil
 }
 
@@ -73,10 +61,23 @@ func (h *GrpcHandler) DeleteUser(ctx context.Context, req *pb.DeleteUserRequest)
 }
 
 func (h *GrpcHandler) ListUsers(ctx context.Context, req *pb.ListUsersRequest) (*pb.ListUsersResponse, error) {
-	users, nextPageToken, err := h.service.ListUsers(int(req.GetLimit()), req.GetPageToken())
+	domainUsers, nextPageToken, err := h.service.ListUsers(int(req.GetLimit()), req.GetPageToken())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to list users: %v", err)
 	}
+
+	var users []*pb.User
+
+	for _, u := range domainUsers {
+		users = append(users, &pb.User{
+			UserId:    u.UserId,
+			Username:  u.Username,
+			Email:     u.Email,
+			Password:  u.Password,
+			CreatedAt: u.CreatedAt.Unix(),
+		})
+	}
+
 	return &pb.ListUsersResponse{
 		Users:         users,
 		NextPageToken: nextPageToken,

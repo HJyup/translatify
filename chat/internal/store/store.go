@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"errors"
+	"github.com/HJyup/translatify-common/utils"
 	"strconv"
 	"time"
 
@@ -10,9 +11,6 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/jackc/pgx/v5"
 )
-
-var ErrMessageNotFound = errors.New("message not found")
-var ErrChatNotFound = errors.New("chat not found")
 
 type Store struct {
 	dbConn *pgx.Conn
@@ -90,6 +88,7 @@ func (s *Store) ListMessages(ctx context.Context, chatId string, since *timestam
 		ORDER BY timestamp ASC
 		LIMIT $3
 	`
+
 	rows, err := s.dbConn.Query(ctx, query, chatId, effectiveSince, limit+1)
 	if err != nil {
 		return nil, "", err
@@ -104,7 +103,7 @@ func (s *Store) ListMessages(ctx context.Context, chatId string, since *timestam
 		}
 		messages = append(messages, msg)
 	}
-	if err := rows.Err(); err != nil {
+	if err = rows.Err(); err != nil {
 		return nil, "", err
 	}
 
@@ -135,7 +134,7 @@ func (s *Store) GetChat(ctx context.Context, id string) (*pb.Chat, error) {
 	)
 	if err := row.Scan(&ChatID, &userNameA, &userNameB, &createdAt, &sourceLang, &targetLang); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrChatNotFound
+			return nil, errors.New("chat not found")
 		}
 		return nil, err
 	}
@@ -191,11 +190,7 @@ func (s *Store) ListChats(ctx context.Context, userID string) ([]*pb.Chat, error
 	return Chats, nil
 }
 
-type rowScanner interface {
-	Scan(dest ...interface{}) error
-}
-
-func scanChatMessage(rs rowScanner) (*pb.ChatMessage, error) {
+func scanChatMessage(rs utils.RowScanner) (*pb.ChatMessage, error) {
 	var (
 		messageID         string
 		chatID            string
@@ -209,7 +204,7 @@ func scanChatMessage(rs rowScanner) (*pb.ChatMessage, error) {
 
 	if err := rs.Scan(&messageID, &chatID, &senderUserName, &receiverUserName, &content, &translatedContent, &ts, &translated); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrMessageNotFound
+			return nil, errors.New("message not found")
 		}
 		return nil, err
 	}

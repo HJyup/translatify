@@ -1,7 +1,6 @@
 package discovery
 
 import (
-	"context"
 	"encoding/hex"
 	"fmt"
 	"log"
@@ -9,10 +8,10 @@ import (
 )
 
 type Registry interface {
-	Register(ctx context.Context, instanceID, serverName, hostPort string) error
-	DeRegister(ctx context.Context, instanceID, serverName string) error
-	Discover(ctx context.Context, serverName string) ([]string, error)
-	HealthCheck(instanceID, serverName string) error
+	Register(instanceID, serverName, hostPort string) error
+	DeRegister(instanceID string) error
+	Discover(serverName string) ([]string, error)
+	HealthCheck(instanceID string) error
 }
 
 func GenerateInstanceID(serverName string) string {

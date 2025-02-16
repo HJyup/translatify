@@ -17,7 +17,7 @@ func NewGateway(registry discovery.Registry) *GrpcGateway {
 }
 
 func (g *GrpcGateway) CreateUser(ctx context.Context, payload *pb.CreateUserRequest) (*pb.CreateUserResponse, error) {
-	conn, err := discovery.ServiceConnection(ctx, "user", g.registry)
+	conn, err := discovery.ServiceConnection("user", g.registry)
 	if err != nil {
 		log.Fatal("Failed to connect to user service")
 	}
@@ -26,7 +26,7 @@ func (g *GrpcGateway) CreateUser(ctx context.Context, payload *pb.CreateUserRequ
 }
 
 func (g *GrpcGateway) GetUser(ctx context.Context, payload *pb.GetUserRequest) (*pb.GetUserResponse, error) {
-	conn, err := discovery.ServiceConnection(ctx, "user", g.registry)
+	conn, err := discovery.ServiceConnection("user", g.registry)
 	if err != nil {
 		log.Fatal("Failed to connect to user service")
 	}
@@ -34,17 +34,8 @@ func (g *GrpcGateway) GetUser(ctx context.Context, payload *pb.GetUserRequest) (
 	return userClient.GetUser(ctx, payload)
 }
 
-func (g *GrpcGateway) UpdateUser(ctx context.Context, payload *pb.UpdateUserRequest) (*pb.UpdateUserResponse, error) {
-	conn, err := discovery.ServiceConnection(ctx, "user", g.registry)
-	if err != nil {
-		log.Fatal("Failed to connect to user service")
-	}
-	userClient := pb.NewUserServiceClient(conn)
-	return userClient.UpdateUser(ctx, payload)
-}
-
 func (g *GrpcGateway) ListUsers(ctx context.Context, payload *pb.ListUsersRequest) (*pb.ListUsersResponse, error) {
-	conn, err := discovery.ServiceConnection(ctx, "user", g.registry)
+	conn, err := discovery.ServiceConnection("user", g.registry)
 	if err != nil {
 		log.Fatal("Failed to connect to user service")
 	}
@@ -53,7 +44,7 @@ func (g *GrpcGateway) ListUsers(ctx context.Context, payload *pb.ListUsersReques
 }
 
 func (g *GrpcGateway) DeleteUser(ctx context.Context, payload *pb.DeleteUserRequest) (*pb.DeleteUserResponse, error) {
-	conn, err := discovery.ServiceConnection(ctx, "user", g.registry)
+	conn, err := discovery.ServiceConnection("user", g.registry)
 	if err != nil {
 		log.Fatal("Failed to connect to user service")
 	}
