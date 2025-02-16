@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"github.com/HJyup/translatify-gateway/internal/gateway/chat"
+	"github.com/HJyup/translatify-gateway/internal/gateway/user"
 	"github.com/clerk/clerk-sdk-go/v2"
 	"log"
 	"net/http"
@@ -14,7 +16,6 @@ import (
 	"github.com/HJyup/translatify-common/discovery/consul"
 	"github.com/HJyup/translatify-common/tracer"
 	"github.com/HJyup/translatify-common/utils"
-	"github.com/HJyup/translatify-gateway/internal/gateway"
 	"github.com/HJyup/translatify-gateway/internal/handlers"
 	mux2 "github.com/gorilla/mux"
 
@@ -76,9 +77,13 @@ func main() {
 
 	mux := mux2.NewRouter()
 
-	chatGateway := gateway.NewGateway(registry)
+	chatGateway := chat.NewGateway(registry)
 	chatHandler := handlers.NewChatHandler(chatGateway)
 	chatHandler.RegisterRoutes(mux)
+
+	userGateway := user.NewGateway(registry)
+	userHandler := handlers.NewUserHandler(userGateway)
+	userHandler.RegisterRoutes(mux)
 
 	log.Println("Starting server on", httpAddr)
 

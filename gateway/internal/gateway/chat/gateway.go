@@ -1,11 +1,11 @@
-package gateway
+package chat
 
 import (
 	"context"
 	pb "github.com/HJyup/translatify-common/api"
 )
 
-type ChatGateway interface {
+type Gateway interface {
 	CreateChat(ctx context.Context, payload *pb.CreateChatRequest) (*pb.CreateChatResponse, error)
 	SendMessage(ctx context.Context, payload *pb.SendMessageRequest) (*pb.SendMessageResponse, error)
 	GetMessage(context.Context, *pb.GetMessageRequest) (*pb.GetMessageResponse, error)

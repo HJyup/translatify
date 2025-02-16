@@ -1,0 +1,112 @@
+syntax = "proto3";
+
+option go_package = "github.com/HJyup/translatify/api";
+
+package api;
+
+// UserService defines RPCs for user management.
+service UserService {
+  // CreateUser creates a new user.
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+
+  // GetUser retrieves a user by their user_id.
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+
+  // UpdateUser updates the details of an existing user.
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse);
+
+  // DeleteUser removes a user.
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+
+  // ListUsers retrieves a list of users with optional pagination.
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+}
+
+// User represents a user account.
+message User {
+  // Unique identifier for the user.
+  string user_id = 1;
+  // The user's chosen username.
+  string username = 2;
+  // The user's email address.
+  string email = 3;
+  // The user's full name.
+  string full_name = 4;
+  // Hashed password for the user.
+  string password = 5;
+  // Unix timestamp when the user was created.
+  int64 created_at = 6;
+}
+
+// CreateUserRequest contains the information needed to create a user.
+message CreateUserRequest {
+  string username = 1;
+  string email = 2;
+  string full_name = 3;
+  string password = 4;
+}
+
+// CreateUserResponse returns the created user.
+message CreateUserResponse {
+  bool success = 1;
+  User user = 2;
+  string error = 3;
+}
+
+// GetUserRequest retrieves a user by their user_id.
+message GetUserRequest {
+  string user_id = 1;
+}
+
+// GetUserResponse returns the requested user.
+message GetUserResponse {
+  User user = 1;
+  string error = 2;
+}
+
+// UpdateUserRequest updates the user's details.
+message UpdateUserRequest {
+  // UserName to update.
+  string username = 1;
+  // Updated email (optional).
+  string email = 2;
+  // Updated full name (optional).
+  string full_name = 3;
+  // Updated password (optional).
+  string password = 4;
+}
+
+// UpdateUserResponse returns the updated user.
+message UpdateUserResponse {
+  bool success = 1;
+  User user = 2;
+  string error = 3;
+}
+
+// DeleteUserRequest removes a user by their user_id.
+message DeleteUserRequest {
+  string user_id = 1;
+}
+
+// DeleteUserResponse confirms the deletion.
+message DeleteUserResponse {
+  bool success = 1;
+  string error = 2;
+}
+
+// ListUsersRequest retrieves a list of users with optional pagination.
+message ListUsersRequest {
+  // Maximum number of users to return.
+  int32 limit = 1;
+  // Optional pagination token.
+  string page_token = 2;
+}
+
+// ListUsersResponse returns a list of users.
+message ListUsersResponse {
+  // The list of users.
+  repeated User users = 1;
+  // Token to retrieve the next page.
+  string next_page_token = 2;
+  string error = 3;
+}

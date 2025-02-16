@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/HJyup/translatify-gateway/internal/gateway/chat"
 	"io"
 	"net/http"
 	"strconv"
@@ -15,7 +16,6 @@ import (
 
 	pb "github.com/HJyup/translatify-common/api"
 	"github.com/HJyup/translatify-common/utils"
-	"github.com/HJyup/translatify-gateway/internal/gateway"
 	"github.com/HJyup/translatify-gateway/internal/models"
 )
 
@@ -24,10 +24,10 @@ var upgrader = websocket.Upgrader{
 }
 
 type ChatHandler struct {
-	gateway gateway.ChatGateway
+	gateway chat.Gateway
 }
 
-func NewChatHandler(gateway gateway.ChatGateway) *ChatHandler {
+func NewChatHandler(gateway chat.Gateway) *ChatHandler {
 	return &ChatHandler{gateway: gateway}
 }
 

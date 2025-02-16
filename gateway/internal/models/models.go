@@ -23,3 +23,9 @@ type StreamMessagesRequest struct {
 	ChatId         string `json:"chatId"`
 	SinceTimestamp int64  `json:"sinceTimestamp"`
 }
+
+type CreateUserRequest struct {
+	UserName string `json:"username"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}

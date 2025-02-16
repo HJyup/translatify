@@ -34,16 +34,19 @@ services:
       timeout: 10s
       retries: 5
 
-  db:
+  db-chat:
     image: postgres:14-alpine
     ports:
       - "5432:5432"
     volumes:
       - ~/apps/postgres:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_PASSWORD=translatify_pass
-      - POSTGRES_USER=translatify_user
-      - POSTGRES_DB=translatify
+
+  db-user:
+    image: postgres:14-alpine
+    ports:
+      - "5433:5433"
+    volumes:
+      - ~/apps/postgres:/var/lib/postgresql/data
 
   chat:
     build:
