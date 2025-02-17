@@ -27,6 +27,7 @@ func (h *GrpcHandler) CreateUser(ctx context.Context, req *pb.CreateUserRequest)
 		req.GetUsername(),
 		req.GetEmail(),
 		req.GetPassword(),
+		req.GetLanguage(),
 	)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create user: %v", err)
@@ -45,6 +46,7 @@ func (h *GrpcHandler) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.
 		User: &pb.User{
 			Username:  user.Username,
 			Email:     user.Email,
+			Language:  user.Language,
 			CreatedAt: user.CreatedAt.Unix(),
 		},
 	}, nil
@@ -70,10 +72,9 @@ func (h *GrpcHandler) ListUsers(ctx context.Context, req *pb.ListUsersRequest) (
 
 	for _, u := range domainUsers {
 		users = append(users, &pb.User{
-			UserId:    u.UserId,
 			Username:  u.Username,
 			Email:     u.Email,
-			Password:  u.Password,
+			Language:  u.Language,
 			CreatedAt: u.CreatedAt.Unix(),
 		})
 	}

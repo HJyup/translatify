@@ -22,8 +22,10 @@ message User {
   string email = 3;
   // Hashed password for the user.
   string password = 4;
+  // Preferred language for the user.
+  string language = 5;
   // Unix timestamp when the user was created.
-  int64 created_at = 5;
+  int64 created_at = 6;
 }
 
 // CreateUserRequest contains the information needed to create a user.
@@ -31,6 +33,7 @@ message CreateUserRequest {
   string username = 1;
   string email = 2;
   string password = 3;
+  string language = 4;
 }
 
 // CreateUserResponse returns the created user details along with a token.

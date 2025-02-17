@@ -3,12 +3,10 @@ package store
 import (
 	"context"
 	"errors"
-	"github.com/HJyup/translatify-common/utils"
 	"strconv"
 	"time"
 
-	pb "github.com/HJyup/translatify-common/api"
-	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/HJyup/translatify-chat/internal/models"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -20,60 +18,67 @@ func NewStore(dbConn *pgx.Conn) *Store {
 	return &Store{dbConn: dbConn}
 }
 
-func (s *Store) CreateConversion(ctx context.Context, conv *pb.Chat) (string, error) {
+func (s *Store) CreateConversion(ctx context.Context, conv *models.Chat) (string, error) {
 	query := `
 		INSERT INTO chats
-			(chat_id, username_a, username_b, created_at, source_language, target_language)
-		VALUES ($1, $2, $3, $4, $5, $6)
+			(username_a, username_b, created_at, source_language, target_language)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING chat_id
 	`
-
-	ts := time.Now().Unix()
-	_, err := s.dbConn.Exec(ctx, query,
-		conv.ChatId,
+	now := time.Now()
+	conv.CreatedAt = now
+	var chatID string
+	err := s.dbConn.QueryRow(ctx, query,
 		conv.UsernameA,
 		conv.UsernameB,
-		ts,
-		conv.SourceLanguage,
-		conv.TargetLanguage,
-	)
-	return conv.ChatId, err
+		now.Unix(),
+		conv.SourceLang,
+		conv.TargetLang,
+	).Scan(&chatID)
+	if err != nil {
+		return "", err
+	}
+	return chatID, nil
 }
 
-func (s *Store) AddMessage(ctx context.Context, msg *pb.ChatMessage) error {
+func (s *Store) AddMessage(ctx context.Context, msg *models.ChatMessage) (string, error) {
 	query := `
-		INSERT INTO chat_messages
-			(message_id, chat_id, sender_username, receiver_username, content, translated_content, timestamp, translated)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO messages
+			(chat_id, sender_username, receiver_username, content, translated_content, timestamp)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING message_id
 	`
-
-	ts := time.Now().Unix()
-	_, err := s.dbConn.Exec(ctx, query,
-		msg.MessageId,
-		msg.ChatId,
+	now := time.Now()
+	msg.Timestamp = now
+	var messageID string
+	err := s.dbConn.QueryRow(ctx, query,
+		msg.ChatID,
 		msg.SenderUsername,
 		msg.ReceiverUsername,
 		msg.Content,
 		"",
-		ts,
-		false,
-	)
-	return err
+		now.Unix(),
+	).Scan(&messageID)
+	if err != nil {
+		return "", err
+	}
+	return messageID, nil
 }
 
-func (s *Store) GetMessage(ctx context.Context, id string) (*pb.ChatMessage, error) {
+func (s *Store) GetMessage(ctx context.Context, id string) (*models.ChatMessage, error) {
 	query := `
-		SELECT message_id, chat_id, sender_username, receiver_username, content, translated_content, timestamp, translated
-		FROM chat_messages
+		SELECT message_id, chat_id, sender_username, receiver_username, content, translated_content, timestamp
+		FROM messages
 		WHERE message_id = $1
 	`
 	row := s.dbConn.QueryRow(ctx, query, id)
 	return scanChatMessage(row)
 }
 
-func (s *Store) ListMessages(ctx context.Context, chatId string, since *timestamp.Timestamp, limit int, pageToken string) ([]*pb.ChatMessage, string, error) {
-	var effectiveSince int64 = 0
+func (s *Store) ListMessages(ctx context.Context, chatID string, since *time.Time, limit int, pageToken string) ([]*models.ChatMessage, string, error) {
+	effectiveSince := int64(0)
 	if since != nil {
-		effectiveSince = since.Seconds
+		effectiveSince = since.Unix()
 	}
 	if pageToken != "" {
 		if tokenTs, err := strconv.ParseInt(pageToken, 10, 64); err == nil && tokenTs > effectiveSince {
@@ -82,20 +87,19 @@ func (s *Store) ListMessages(ctx context.Context, chatId string, since *timestam
 	}
 
 	query := `
-		SELECT message_id, chat_id, sender_username, receiver_username, content, translated_content, timestamp, translated
-		FROM chat_messages
+		SELECT message_id, chat_id, sender_username, receiver_username, content, translated_content, timestamp
+		FROM messages
 		WHERE chat_id = $1 AND timestamp > $2
 		ORDER BY timestamp ASC
 		LIMIT $3
 	`
-
-	rows, err := s.dbConn.Query(ctx, query, chatId, effectiveSince, limit+1)
+	rows, err := s.dbConn.Query(ctx, query, chatID, effectiveSince, limit+1)
 	if err != nil {
 		return nil, "", err
 	}
 	defer rows.Close()
 
-	messages := make([]*pb.ChatMessage, 0)
+	messages := make([]*models.ChatMessage, 0)
 	for rows.Next() {
 		msg, err := scanChatMessage(rows)
 		if err != nil {
@@ -109,14 +113,14 @@ func (s *Store) ListMessages(ctx context.Context, chatId string, since *timestam
 
 	var nextPageToken string
 	if len(messages) > limit {
-		nextPageToken = strconv.FormatInt(messages[limit].Timestamp, 10)
+		nextPageToken = strconv.FormatInt(messages[limit].Timestamp.Unix(), 10)
 		messages = messages[:limit]
 	}
 
 	return messages, nextPageToken, nil
 }
 
-func (s *Store) GetChat(ctx context.Context, id string) (*pb.Chat, error) {
+func (s *Store) GetChat(ctx context.Context, id string) (*models.Chat, error) {
 	query := `
 		SELECT chat_id, username_a, username_b, created_at, source_language, target_language
 		FROM chats
@@ -125,98 +129,96 @@ func (s *Store) GetChat(ctx context.Context, id string) (*pb.Chat, error) {
 	row := s.dbConn.QueryRow(ctx, query, id)
 
 	var (
-		ChatID     string
-		userNameA  string
-		userNameB  string
+		chatID     string
+		usernameA  string
+		usernameB  string
 		createdAt  int64
 		sourceLang string
 		targetLang string
 	)
-	if err := row.Scan(&ChatID, &userNameA, &userNameB, &createdAt, &sourceLang, &targetLang); err != nil {
+	if err := row.Scan(&chatID, &usernameA, &usernameB, &createdAt, &sourceLang, &targetLang); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("chat not found")
 		}
 		return nil, err
 	}
 
-	return &pb.Chat{
-		ChatId:         ChatID,
-		UsernameA:      userNameA,
-		UsernameB:      userNameB,
-		CreatedAt:      createdAt,
-		SourceLanguage: sourceLang,
-		TargetLanguage: targetLang,
+	return &models.Chat{
+		ChatID:     chatID,
+		UsernameA:  usernameA,
+		UsernameB:  usernameB,
+		CreatedAt:  time.Unix(createdAt, 0),
+		SourceLang: sourceLang,
+		TargetLang: targetLang,
 	}, nil
 }
 
-func (s *Store) ListChats(ctx context.Context, userID string) ([]*pb.Chat, error) {
+func (s *Store) ListChats(ctx context.Context, userName string) ([]*models.Chat, error) {
 	query := `
 		SELECT chat_id, username_a, username_b, created_at, source_language, target_language
 		FROM chats
-		WHERE user_a_id = $1 OR user_b_id = $1
+		WHERE username_a = $1 OR username_b = $1
 	`
-	rows, err := s.dbConn.Query(ctx, query, userID)
+	rows, err := s.dbConn.Query(ctx, query, userName)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	Chats := make([]*pb.Chat, 0)
+	chats := make([]*models.Chat, 0)
 	for rows.Next() {
 		var (
 			chatID     string
-			userNameA  string
-			userNameB  string
+			usernameA  string
+			usernameB  string
 			createdAt  int64
 			sourceLang string
 			targetLang string
 		)
-		if err = rows.Scan(&chatID, &userNameA, &userNameB, &createdAt, &sourceLang, &targetLang); err != nil {
+		if err = rows.Scan(&chatID, &usernameA, &usernameB, &createdAt, &sourceLang, &targetLang); err != nil {
 			return nil, err
 		}
-		Chats = append(Chats, &pb.Chat{
-			ChatId:         chatID,
-			UsernameA:      userNameA,
-			UsernameB:      userNameB,
-			CreatedAt:      createdAt,
-			SourceLanguage: sourceLang,
-			TargetLanguage: targetLang,
+		chats = append(chats, &models.Chat{
+			ChatID:     chatID,
+			UsernameA:  usernameA,
+			UsernameB:  usernameB,
+			CreatedAt:  time.Unix(createdAt, 0),
+			SourceLang: sourceLang,
+			TargetLang: targetLang,
 		})
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return Chats, nil
+	return chats, nil
 }
 
-func scanChatMessage(rs utils.RowScanner) (*pb.ChatMessage, error) {
+func scanChatMessage(rs pgx.Row) (*models.ChatMessage, error) {
 	var (
 		messageID         string
 		chatID            string
-		senderUserName    string
-		receiverUserName  string
+		senderUsername    string
+		receiverUsername  string
 		content           string
 		translatedContent string
 		ts                int64
-		translated        bool
 	)
 
-	if err := rs.Scan(&messageID, &chatID, &senderUserName, &receiverUserName, &content, &translatedContent, &ts, &translated); err != nil {
+	if err := rs.Scan(&messageID, &chatID, &senderUsername, &receiverUsername, &content, &translatedContent, &ts); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("message not found")
 		}
 		return nil, err
 	}
 
-	return &pb.ChatMessage{
-		MessageId:         messageID,
-		ChatId:            chatID,
-		SenderUsername:    senderUserName,
-		ReceiverUsername:  receiverUserName,
+	return &models.ChatMessage{
+		MessageID:         messageID,
+		ChatID:            chatID,
+		SenderUsername:    senderUsername,
+		ReceiverUsername:  receiverUsername,
 		Content:           content,
 		TranslatedContent: translatedContent,
-		Timestamp:         ts,
-		Translated:        translated,
+		Timestamp:         time.Unix(ts, 0),
 	}, nil
 }

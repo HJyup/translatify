@@ -97,8 +97,6 @@ message ChatMessage {
   string translated_content = 6;
   // Unix timestamp when the message was created.
   int64 timestamp = 7;
-  // Indicates whether translation has been applied.
-  bool translated = 8;
 }
 
 // StreamMessagesRequest subscribes to new messages in a Chat.

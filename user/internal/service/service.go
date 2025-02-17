@@ -19,11 +19,11 @@ func NewService(store models.UserStore) *UserService {
 	return &UserService{store: store}
 }
 
-func (s *UserService) CreateUser(username, email, password string) (string, error) {
+func (s *UserService) CreateUser(username, email, password, language string) (string, error) {
 	ctx := context.Background()
 
-	if username == "" || email == "" || password == "" {
-		return "", errors.New("username, email, and password are required")
+	if username == "" || email == "" || password == "" || language == "" {
+		return "", errors.New("username, email, language and password are required")
 	}
 
 	if len(password) < MinPasswordLength {
@@ -35,7 +35,7 @@ func (s *UserService) CreateUser(username, email, password string) (string, erro
 		return "", errors.New("failed to hash password")
 	}
 
-	user, err := s.store.CreateUser(ctx, username, email, string(hashedPassword))
+	user, err := s.store.CreateUser(ctx, username, email, string(hashedPassword), language)
 	if err != nil {
 		return "", err
 	}

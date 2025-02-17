@@ -1,16 +1,16 @@
 package models
 
 type CreateChatRequest struct {
-	UserAId        string `json:"userAId"`
-	UserBId        string `json:"userBId"`
+	UserNameA      string `json:"usernameA"`
+	UserNameB      string `json:"userNameB"`
 	SourceLanguage string `json:"sourceLanguage"`
 	TargetLanguage string `json:"targetLanguage"`
 }
 
 type SendMessageRequest struct {
-	FromUserID string `json:"fromUserId"`
-	ToUserID   string `json:"toUserId"`
-	Content    string `json:"content"`
+	FromUserName string `json:"fromUsername"`
+	ToUserName   string `json:"toUsername"`
+	Content      string `json:"content"`
 }
 
 type ListMessagesRequest struct {
@@ -28,4 +28,5 @@ type CreateUserRequest struct {
 	UserName string `json:"username"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
+	Language string `json:"language"`
 }

@@ -22,14 +22,14 @@ func NewStore(dbConn *pgx.Conn) *Store {
 	return &Store{dbConn: dbConn}
 }
 
-func (s *Store) CreateUser(ctx context.Context, username, email, password string) (*models.User, error) {
+func (s *Store) CreateUser(ctx context.Context, username, email, password, language string) (*models.User, error) {
 	query := `
-		INSERT INTO users (username, email, password)
-		VALUES ($1, $2, $3)
+		INSERT INTO users (username, email, password, language)
+		VALUES ($1, $2, $3, $4)
 		RETURNING user_id
 	`
 	var userId string
-	err := s.dbConn.QueryRow(ctx, query, username, email, password).Scan(&userId)
+	err := s.dbConn.QueryRow(ctx, query, username, email, password, language).Scan(&userId)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
@@ -43,13 +43,14 @@ func (s *Store) CreateUser(ctx context.Context, username, email, password string
 		Username:  username,
 		Email:     email,
 		Password:  password,
+		Language:  language,
 		CreatedAt: time.Now(),
 	}, nil
 }
 
 func (s *Store) GetUser(ctx context.Context, username string) (*models.User, error) {
 	query := `
-		SELECT user_id, username, email, password, created_at
+		SELECT user_id, username, email, password, language, created_at
 		FROM users
 		WHERE username = $1
 	`
@@ -81,7 +82,7 @@ func (s *Store) ListUsers(ctx context.Context, limit int, paginationToken string
 	}
 
 	query := `
-		SELECT user_id, username, email, password, created_at
+		SELECT user_id, username, email, password, language, created_at
 		FROM users
 		WHERE created_at > to_timestamp($1)
 		ORDER BY created_at ASC
@@ -121,9 +122,10 @@ func scanUser(rs utils.RowScanner) (*models.User, error) {
 		username  string
 		email     string
 		password  string
+		language  string
 		createdAt time.Time
 	)
-	if err := rs.Scan(&userId, &username, &email, &password, &createdAt); err != nil {
+	if err := rs.Scan(&userId, &username, &email, &password, &language, &createdAt); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("user not found")
 		}
@@ -132,6 +134,7 @@ func scanUser(rs utils.RowScanner) (*models.User, error) {
 	return &models.User{
 		Username:  username,
 		Email:     email,
+		Language:  language,
 		CreatedAt: createdAt,
 	}, nil
 }

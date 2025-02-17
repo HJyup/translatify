@@ -55,6 +55,7 @@ func (h *UserHandler) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
 		Username: reqBody.UserName,
 		Email:    reqBody.Email,
 		Password: reqBody.Password,
+		Language: reqBody.Language,
 	})
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
