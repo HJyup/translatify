@@ -1,6 +1,7 @@
 package consul
 
 import (
+	"context"
 	"errors"
 	consul "github.com/hashicorp/consul/api"
 	"log"
@@ -56,7 +57,7 @@ func (r Registry) DeRegister(instanceID string) error {
 	return r.client.Agent().ServiceDeregister(instanceID)
 }
 
-func (r Registry) Discover(serverName string) ([]string, error) {
+func (r Registry) Discover(_ context.Context, serverName string) ([]string, error) {
 	entries, _, err := r.client.Health().Service(serverName, "", true, nil)
 	if err != nil {
 		return nil, err

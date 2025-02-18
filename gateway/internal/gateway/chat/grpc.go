@@ -17,7 +17,7 @@ func NewGateway(registry discovery.Registry) *GrpcGateway {
 }
 
 func (g *GrpcGateway) CreateChat(ctx context.Context, payload *pb.CreateChatRequest) (*pb.CreateChatResponse, error) {
-	conn, err := discovery.ServiceConnection("chat", g.registry)
+	conn, err := discovery.ServiceConnection(context.Background(), "chat", g.registry)
 	if err != nil {
 		log.Fatal("Failed to connect to chat service")
 	}
@@ -26,7 +26,7 @@ func (g *GrpcGateway) CreateChat(ctx context.Context, payload *pb.CreateChatRequ
 }
 
 func (g *GrpcGateway) SendMessage(ctx context.Context, payload *pb.SendMessageRequest) (*pb.SendMessageResponse, error) {
-	conn, err := discovery.ServiceConnection("chat", g.registry)
+	conn, err := discovery.ServiceConnection(context.Background(), "chat", g.registry)
 	if err != nil {
 		log.Fatal("Failed to connect to chat service")
 	}
@@ -35,7 +35,7 @@ func (g *GrpcGateway) SendMessage(ctx context.Context, payload *pb.SendMessageRe
 }
 
 func (g *GrpcGateway) GetMessage(ctx context.Context, payload *pb.GetMessageRequest) (*pb.GetMessageResponse, error) {
-	conn, err := discovery.ServiceConnection("chat", g.registry)
+	conn, err := discovery.ServiceConnection(context.Background(), "chat", g.registry)
 	if err != nil {
 		log.Fatal("Failed to connect to chat service")
 	}
@@ -44,7 +44,7 @@ func (g *GrpcGateway) GetMessage(ctx context.Context, payload *pb.GetMessageRequ
 }
 
 func (g *GrpcGateway) ListMessages(ctx context.Context, payload *pb.ListMessagesRequest) (*pb.ListMessagesResponse, error) {
-	conn, err := discovery.ServiceConnection("chat", g.registry)
+	conn, err := discovery.ServiceConnection(context.Background(), "chat", g.registry)
 	if err != nil {
 		log.Fatal("Failed to connect to chat service")
 	}
@@ -53,7 +53,7 @@ func (g *GrpcGateway) ListMessages(ctx context.Context, payload *pb.ListMessages
 }
 
 func (g *GrpcGateway) StreamMessages(ctx context.Context, payload *pb.StreamMessagesRequest) (pb.ChatService_StreamMessagesClient, error) {
-	conn, err := discovery.ServiceConnection("chat", g.registry)
+	conn, err := discovery.ServiceConnection(context.Background(), "chat", g.registry)
 	if err != nil {
 		log.Fatal("Failed to connect to chat service")
 		return nil, err
@@ -63,7 +63,7 @@ func (g *GrpcGateway) StreamMessages(ctx context.Context, payload *pb.StreamMess
 }
 
 func (g *GrpcGateway) GetChat(ctx context.Context, payload *pb.GetChatRequest) (*pb.GetChatResponse, error) {
-	conn, err := discovery.ServiceConnection("chat", g.registry)
+	conn, err := discovery.ServiceConnection(context.Background(), "chat", g.registry)
 	if err != nil {
 		log.Fatal("Failed to connect to chat service")
 	}
@@ -72,7 +72,7 @@ func (g *GrpcGateway) GetChat(ctx context.Context, payload *pb.GetChatRequest) (
 }
 
 func (g *GrpcGateway) ListChats(ctx context.Context, payload *pb.ListChatsRequest) (*pb.ListChatsResponse, error) {
-	conn, err := discovery.ServiceConnection("chat", g.registry)
+	conn, err := discovery.ServiceConnection(context.Background(), "chat", g.registry)
 	if err != nil {
 		log.Fatal("Failed to connect to chat service")
 	}

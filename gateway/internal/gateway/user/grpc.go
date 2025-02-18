@@ -17,7 +17,7 @@ func NewGateway(registry discovery.Registry) *GrpcGateway {
 }
 
 func (g *GrpcGateway) CreateUser(ctx context.Context, payload *pb.CreateUserRequest) (*pb.CreateUserResponse, error) {
-	conn, err := discovery.ServiceConnection("user", g.registry)
+	conn, err := discovery.ServiceConnection(context.Background(), "user", g.registry)
 	if err != nil {
 		log.Fatal("Failed to connect to user service")
 	}
@@ -26,7 +26,7 @@ func (g *GrpcGateway) CreateUser(ctx context.Context, payload *pb.CreateUserRequ
 }
 
 func (g *GrpcGateway) GetUser(ctx context.Context, payload *pb.GetUserRequest) (*pb.GetUserResponse, error) {
-	conn, err := discovery.ServiceConnection("user", g.registry)
+	conn, err := discovery.ServiceConnection(context.Background(), "user", g.registry)
 	if err != nil {
 		log.Fatal("Failed to connect to user service")
 	}
@@ -35,7 +35,7 @@ func (g *GrpcGateway) GetUser(ctx context.Context, payload *pb.GetUserRequest) (
 }
 
 func (g *GrpcGateway) ListUsers(ctx context.Context, payload *pb.ListUsersRequest) (*pb.ListUsersResponse, error) {
-	conn, err := discovery.ServiceConnection("user", g.registry)
+	conn, err := discovery.ServiceConnection(context.Background(), "user", g.registry)
 	if err != nil {
 		log.Fatal("Failed to connect to user service")
 	}
@@ -44,7 +44,7 @@ func (g *GrpcGateway) ListUsers(ctx context.Context, payload *pb.ListUsersReques
 }
 
 func (g *GrpcGateway) DeleteUser(ctx context.Context, payload *pb.DeleteUserRequest) (*pb.DeleteUserResponse, error) {
-	conn, err := discovery.ServiceConnection("user", g.registry)
+	conn, err := discovery.ServiceConnection(context.Background(), "user", g.registry)
 	if err != nil {
 		log.Fatal("Failed to connect to user service")
 	}

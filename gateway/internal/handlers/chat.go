@@ -9,15 +9,14 @@ import (
 	"strconv"
 	"strings"
 
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/codes"
-
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 
 	pb "github.com/HJyup/translatify-common/api"
 	"github.com/HJyup/translatify-common/utils"
 	"github.com/HJyup/translatify-gateway/internal/models"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 )
 
 var upgrader = websocket.Upgrader{
@@ -74,18 +73,14 @@ func (h *ChatHandler) HandleCreateChat(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
-	tr := otel.Tracer("http")
-	ctx, span := tr.Start(r.Context(), fmt.Sprintf("%s %s", r.Method, r.RequestURI))
-	defer span.End()
 	req := &pb.CreateChatRequest{
 		UsernameA:      reqBody.UserNameA,
 		UsernameB:      reqBody.UserNameB,
 		SourceLanguage: reqBody.SourceLanguage,
 		TargetLanguage: reqBody.TargetLanguage,
 	}
-	resp, err := h.gateway.CreateChat(ctx, req)
+	resp, err := h.gateway.CreateChat(r.Context(), req)
 	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
 		utils.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -99,13 +94,9 @@ func (h *ChatHandler) HandleChat(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusBadRequest, "chatId is required")
 		return
 	}
-	tr := otel.Tracer("http")
-	ctx, span := tr.Start(r.Context(), fmt.Sprintf("%s %s", r.Method, r.RequestURI))
-	defer span.End()
 	getReq := &pb.GetChatRequest{ChatId: chatId}
-	chatResp, err := h.gateway.GetChat(ctx, getReq)
+	chatResp, err := h.gateway.GetChat(r.Context(), getReq)
 	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
 		utils.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -124,13 +115,9 @@ func (h *ChatHandler) HandleListMessages(w http.ResponseWriter, r *http.Request)
 		utils.WriteError(w, http.StatusBadRequest, "chatId is required")
 		return
 	}
-	tr := otel.Tracer("http")
-	ctx, span := tr.Start(r.Context(), fmt.Sprintf("Verify Chat %s", chatId))
-	defer span.End()
 	getReq := &pb.GetChatRequest{ChatId: chatId}
-	chatResp, err := h.gateway.GetChat(ctx, getReq)
+	chatResp, err := h.gateway.GetChat(r.Context(), getReq)
 	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
 		utils.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -167,11 +154,8 @@ func (h *ChatHandler) HandleListMessages(w http.ResponseWriter, r *http.Request)
 		Limit:          limit,
 		PageToken:      pageToken,
 	}
-	ctx, span = tr.Start(r.Context(), fmt.Sprintf("%s %s", r.Method, r.RequestURI))
-	defer span.End()
-	resp, err := h.gateway.ListMessages(ctx, req)
+	resp, err := h.gateway.ListMessages(r.Context(), req)
 	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
 		utils.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -185,13 +169,9 @@ func (h *ChatHandler) HandleStreamMessages(w http.ResponseWriter, r *http.Reques
 		utils.WriteError(w, http.StatusBadRequest, "chatId is required")
 		return
 	}
-	tr := otel.Tracer("http")
-	ctx, span := tr.Start(r.Context(), fmt.Sprintf("Verify Chat %s", chatId))
-	defer span.End()
 	getReq := &pb.GetChatRequest{ChatId: chatId}
-	chatResp, err := h.gateway.GetChat(ctx, getReq)
+	chatResp, err := h.gateway.GetChat(r.Context(), getReq)
 	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
 		utils.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -206,14 +186,11 @@ func (h *ChatHandler) HandleStreamMessages(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	defer conn.Close()
-	ctx, span = tr.Start(r.Context(), fmt.Sprintf("%s %s", r.Method, r.RequestURI))
-	defer span.End()
 	req := &pb.StreamMessagesRequest{
 		ChatId: chatId,
 	}
-	grpcStream, err := h.gateway.StreamMessages(ctx, req)
+	grpcStream, err := h.gateway.StreamMessages(r.Context(), req)
 	if err != nil {
-		span.SetStatus(codes.Error, err.Error())
 		conn.WriteJSON(map[string]string{"error": err.Error()})
 		return
 	}
@@ -230,15 +207,16 @@ func (h *ChatHandler) HandleStreamMessages(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *ChatHandler) HandleSendMessage(w http.ResponseWriter, r *http.Request) {
+	tr := otel.Tracer("http")
+	ctx, span := tr.Start(r.Context(), fmt.Sprintf("%s %s", r.Method, r.RequestURI))
+	defer span.End()
+
 	vars := mux.Vars(r)
 	chatId := vars["chatId"]
 	if chatId == "" {
 		utils.WriteError(w, http.StatusBadRequest, "chatId is required")
 		return
 	}
-	tr := otel.Tracer("http")
-	ctx, span := tr.Start(r.Context(), fmt.Sprintf("Verify Chat %s", chatId))
-	defer span.End()
 	getReq := &pb.GetChatRequest{ChatId: chatId}
 	chatResp, err := h.gateway.GetChat(ctx, getReq)
 	if err != nil {
@@ -266,8 +244,6 @@ func (h *ChatHandler) HandleSendMessage(w http.ResponseWriter, r *http.Request) 
 		utils.WriteError(w, http.StatusUnauthorized, "Unauthorized sender")
 		return
 	}
-	ctx, span = tr.Start(r.Context(), fmt.Sprintf("%s %s", r.Method, r.RequestURI))
-	defer span.End()
 	req := &pb.SendMessageRequest{
 		ChatId:           chatId,
 		SenderUsername:   reqBody.FromUserName,

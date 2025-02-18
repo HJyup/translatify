@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"log"
@@ -10,7 +11,7 @@ import (
 type Registry interface {
 	Register(instanceID, serverName, hostPort string) error
 	DeRegister(instanceID string) error
-	Discover(serverName string) ([]string, error)
+	Discover(ctx context.Context, serverName string) ([]string, error)
 	HealthCheck(instanceID string) error
 }
 
