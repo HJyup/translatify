@@ -3,10 +3,13 @@ package service
 import (
 	"fmt"
 	"github.com/HJyup/translatify-translation/internal/models"
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 type TranslationService struct {
 	translator models.TranslatorModel
+
+	channel *amqp.Channel
 }
 
 func NewTranslationService(translator models.TranslatorModel) *TranslationService {

@@ -7,12 +7,13 @@ import (
 
 type ChatService interface {
 	CreateChat(userNameA, userNameB, sourceLang, targetLang string) (string, error)
-	SendMessage(chatID, senderUserName, receiverUserName, content string) (string, error)
+	SendMessage(ctx context.Context, chatID, senderUserName, receiverUserName, content string) (string, error)
 	GetMessage(messageID string) (*ChatMessage, error)
 	ListMessages(chatID string, since *time.Time, limit int, pageToken string) ([]*ChatMessage, string, error)
 	StreamMessages(ctx context.Context, chatID string) (<-chan *ChatMessage, error)
 	GetChat(chatID string) (*Chat, error)
 	ListChats(userName string) ([]*Chat, error)
+	UpdateMessageTranslation(messageID string, translatedContent string) error
 }
 
 type ChatStore interface {
@@ -22,6 +23,7 @@ type ChatStore interface {
 	ListMessages(ctx context.Context, chatID string, since *time.Time, limit int, pageToken string) ([]*ChatMessage, string, error)
 	GetChat(ctx context.Context, id string) (*Chat, error)
 	ListChats(ctx context.Context, userName string) ([]*Chat, error)
+	UpdateMessageTranslation(ctx context.Context, messageID string, translatedContent string) error
 }
 
 type ChatMessage struct {
@@ -40,4 +42,10 @@ type Chat struct {
 	CreatedAt  time.Time
 	SourceLang string
 	TargetLang string
+}
+
+type ConsumerResponse struct {
+	MessageId         string `json:"messageId"`
+	TranslatedContent string `json:"translatedContent"`
+	Success           bool   `json:"Success"`
 }

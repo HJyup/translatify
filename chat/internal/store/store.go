@@ -3,6 +3,8 @@ package store
 import (
 	"context"
 	"errors"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"strconv"
 	"time"
 
@@ -42,6 +44,10 @@ func (s *Store) CreateConversion(ctx context.Context, conv *models.Chat) (string
 }
 
 func (s *Store) AddMessage(ctx context.Context, msg *models.ChatMessage) (string, error) {
+	ctx, span := otel.Tracer("chat-store").Start(ctx, "AddMessage")
+	span.SetAttributes(attribute.String("chatID", msg.ChatID))
+	defer span.End()
+
 	query := `
 		INSERT INTO messages
 			(chat_id, sender_username, receiver_username, content, translated_content, timestamp)
@@ -192,6 +198,20 @@ func (s *Store) ListChats(ctx context.Context, userName string) ([]*models.Chat,
 	}
 
 	return chats, nil
+}
+
+func (s *Store) UpdateMessageTranslation(ctx context.Context, messageID string, translatedContent string) error {
+	query := `
+		UPDATE messages
+		SET translated_content = $1
+		WHERE message_id = $2
+	`
+	_, err := s.dbConn.Exec(ctx, query, translatedContent, messageID)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func scanChatMessage(rs pgx.Row) (*models.ChatMessage, error) {

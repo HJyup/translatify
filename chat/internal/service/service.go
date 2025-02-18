@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"go.opentelemetry.io/otel"
 	"time"
 
 	"github.com/HJyup/translatify-chat/internal/models"
@@ -37,7 +38,10 @@ func (s *Service) CreateChat(userA, userB, sourceLang, targetLang string) (strin
 	return chatID, nil
 }
 
-func (s *Service) SendMessage(chatID, senderUsername, receiverUsername, content string) (string, error) {
+func (s *Service) SendMessage(ctx context.Context, chatID, senderUsername, receiverUsername, content string) (string, error) {
+	ctx, span := otel.Tracer("chat-service").Start(ctx, "SendMessage")
+	defer span.End()
+
 	if chatID == "" || senderUsername == "" || receiverUsername == "" || content == "" {
 		return "", errors.New("fromUsername, toUsername, and content are required")
 	}
@@ -53,7 +57,7 @@ func (s *Service) SendMessage(chatID, senderUsername, receiverUsername, content 
 		Timestamp:         now,
 	}
 
-	messageID, err := s.store.AddMessage(context.Background(), msg)
+	messageID, err := s.store.AddMessage(ctx, msg)
 	if err != nil {
 		return "", err
 	}
@@ -126,4 +130,12 @@ func (s *Service) ListChats(userName string) ([]*models.Chat, error) {
 		return nil, errors.New("userName is required")
 	}
 	return s.store.ListChats(context.Background(), userName)
+}
+
+func (s *Service) UpdateMessageTranslation(messageID string, translatedContent string) error {
+	if messageID == "" {
+		return errors.New("messageID is empty for updating translation")
+	}
+
+	return s.store.UpdateMessageTranslation(context.Background(), messageID, translatedContent)
 }

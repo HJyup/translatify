@@ -26,7 +26,7 @@ func NewGrpcHandler(grpcServer *grpc.Server, service models.TranslationService, 
 	pb.RegisterTranslationServiceServer(grpcServer, handler)
 }
 
-func (h *GrpcHandler) TranslateMessage(_ context.Context, req *pb.TranslationRequest) (*pb.TranslationResponse, error) {
+func (h *GrpcHandler) TranslateMessage(ctx context.Context, req *pb.TranslationRequest) (*pb.TranslationResponse, error) {
 	msg, err := h.service.TranslateMessage(req.GetSourceLanguage(), req.GetTargetLanguage(), req.GetContent())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to translate the message: %v", err)

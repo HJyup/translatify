@@ -1,11 +1,11 @@
 package consumer
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/HJyup/translatify-common/broker"
 	"github.com/HJyup/translatify-translation/internal/models"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"log"
 )
 
 type Consumer struct {
@@ -40,7 +40,30 @@ func (c *Consumer) Listen(ch *amqp.Channel) {
 				panic(err)
 			}
 
-			log.Println(trnResponse.TranslatedContent)
+			q, err := ch.QueueDeclare(broker.MessageTranslatedEvent, true, false, false, false, nil)
+			if err != nil {
+				panic(err)
+			}
+
+			msgData := map[string]interface{}{
+				"messageId":         msg.MessageID,
+				"translatedContent": trnResponse.TranslatedContent,
+				"Success":           true,
+			}
+
+			body, err := json.Marshal(msgData)
+			if err != nil {
+				panic(err)
+			}
+
+			err = ch.PublishWithContext(context.Background(), "", q.Name, false, false, amqp.Publishing{
+				ContentType:  "application/json",
+				Body:         body,
+				DeliveryMode: amqp.Persistent,
+			})
+			if err != nil {
+				panic(err)
+			}
 		}
 	}()
 

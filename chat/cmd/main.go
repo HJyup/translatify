@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/HJyup/translatify-chat/internal/consumer"
 	"log"
 	"net"
 	"os"
@@ -134,6 +135,9 @@ func main() {
 	str := store.NewStore(dbConn)
 	srv := service.NewService(str)
 	handler.NewGrpcHandler(grpcServer, srv, ch)
+
+	cons := consumer.NewConsumer(srv)
+	go cons.Listen(ch)
 
 	log.Printf("Starting chat server on %s", grpcAddr)
 	if err = grpcServer.Serve(conn); err != nil {

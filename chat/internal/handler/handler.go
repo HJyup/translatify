@@ -2,12 +2,13 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
+	"github.com/HJyup/translatify-common/broker"
+	"github.com/go-jose/go-jose/v3/json"
+	"go.opentelemetry.io/otel"
 	"time"
 
 	"github.com/HJyup/translatify-chat/internal/models"
 	pb "github.com/HJyup/translatify-common/api"
-	"github.com/HJyup/translatify-common/broker"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -58,7 +59,7 @@ func chatMessageFromModel(msg *models.ChatMessage) *pb.ChatMessage {
 	}
 }
 
-func (h *GrpcHandler) CreateChat(ctx context.Context, req *pb.CreateChatRequest) (*pb.CreateChatResponse, error) {
+func (h *GrpcHandler) CreateChat(_ context.Context, req *pb.CreateChatRequest) (*pb.CreateChatResponse, error) {
 	userNameA := req.GetUsernameA()
 	userNameB := req.GetUsernameB()
 	sourceLang := req.GetSourceLanguage()
@@ -81,6 +82,9 @@ func (h *GrpcHandler) CreateChat(ctx context.Context, req *pb.CreateChatRequest)
 }
 
 func (h *GrpcHandler) SendMessage(ctx context.Context, req *pb.SendMessageRequest) (*pb.SendMessageResponse, error) {
+	ctx, span := otel.Tracer("chat-handler").Start(ctx, "SendMessage")
+	defer span.End()
+
 	chatID := req.GetChatId()
 	senderUsername := req.GetSenderUsername()
 	receiverUsername := req.GetReceiverUsername()
@@ -95,35 +99,38 @@ func (h *GrpcHandler) SendMessage(ctx context.Context, req *pb.SendMessageReques
 		return nil, status.Errorf(codes.Internal, "failed to get Chat: %v", err)
 	}
 
-	messageID, err := h.service.SendMessage(chatID, senderUsername, receiverUsername, content)
+	messageID, err := h.service.SendMessage(ctx, chatID, senderUsername, receiverUsername, content)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to send message: %v", err)
 	}
 
-	q, err := h.channel.QueueDeclare(broker.MessageSentEvent, true, false, false, false, nil)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to declare queue: %v", err)
-	}
+	if chat.SourceLang != chat.TargetLang {
+		q, err := h.channel.QueueDeclare(broker.MessageSentEvent, true, false, false, false, nil)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to declare queue: %v", err)
+		}
 
-	msgData := map[string]interface{}{
-		"sourceLang": chat.TargetLang,
-		"targetLang": chat.SourceLang,
-		"messageID":  messageID,
-		"content":    content,
-	}
+		msgData := map[string]interface{}{
+			"sourceLang": chat.TargetLang,
+			"targetLang": chat.SourceLang,
+			"messageID":  messageID,
+			"content":    content,
+		}
 
-	body, err := json.Marshal(msgData)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to marshal message to JSON: %v", err)
-	}
+		body, err := json.Marshal(msgData)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to marshal message to JSON: %v", err)
+		}
 
-	err = h.channel.PublishWithContext(ctx, "", q.Name, false, false, amqp.Publishing{
-		ContentType:  "application/json",
-		Body:         body,
-		DeliveryMode: amqp.Persistent,
-	})
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to publish message: %v", err)
+		err = h.channel.PublishWithContext(ctx, "", q.Name, false, false, amqp.Publishing{
+			ContentType:  "application/json",
+			Body:         body,
+			DeliveryMode: amqp.Persistent,
+		})
+
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to publish message: %v", err)
+		}
 	}
 
 	return &pb.SendMessageResponse{MessageId: messageID}, nil
@@ -153,8 +160,7 @@ func (h *GrpcHandler) StreamMessages(req *pb.StreamMessagesRequest, stream pb.Ch
 	}
 }
 
-// GetMessage retrieves a specific chat message.
-func (h *GrpcHandler) GetMessage(ctx context.Context, req *pb.GetMessageRequest) (*pb.GetMessageResponse, error) {
+func (h *GrpcHandler) GetMessage(_ context.Context, req *pb.GetMessageRequest) (*pb.GetMessageResponse, error) {
 	msg, err := h.service.GetMessage(req.GetMessageId())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get message: %v", err)
@@ -163,7 +169,7 @@ func (h *GrpcHandler) GetMessage(ctx context.Context, req *pb.GetMessageRequest)
 	return &pb.GetMessageResponse{Message: chatMessageFromModel(msg)}, nil
 }
 
-func (h *GrpcHandler) ListMessages(ctx context.Context, req *pb.ListMessagesRequest) (*pb.ListMessagesResponse, error) {
+func (h *GrpcHandler) ListMessages(_ context.Context, req *pb.ListMessagesRequest) (*pb.ListMessagesResponse, error) {
 	if req.GetChatId() == "" {
 		return nil, status.Error(codes.InvalidArgument, "chat_id must be provided")
 	}
@@ -190,8 +196,7 @@ func (h *GrpcHandler) ListMessages(ctx context.Context, req *pb.ListMessagesRequ
 	}, nil
 }
 
-// GetChat retrieves a chat conversation.
-func (h *GrpcHandler) GetChat(ctx context.Context, req *pb.GetChatRequest) (*pb.GetChatResponse, error) {
+func (h *GrpcHandler) GetChat(_ context.Context, req *pb.GetChatRequest) (*pb.GetChatResponse, error) {
 	chat, err := h.service.GetChat(req.GetChatId())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get Chat: %v", err)
@@ -200,8 +205,7 @@ func (h *GrpcHandler) GetChat(ctx context.Context, req *pb.GetChatRequest) (*pb.
 	return &pb.GetChatResponse{Chat: chatFromModel(chat)}, nil
 }
 
-// ListChats lists all chat conversations for a given username.
-func (h *GrpcHandler) ListChats(ctx context.Context, req *pb.ListChatsRequest) (*pb.ListChatsResponse, error) {
+func (h *GrpcHandler) ListChats(_ context.Context, req *pb.ListChatsRequest) (*pb.ListChatsResponse, error) {
 	userName := req.GetUsername()
 	if userName == "" {
 		return nil, status.Error(codes.InvalidArgument, "username must be provided")
