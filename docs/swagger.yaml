@@ -1,0 +1,549 @@
+definitions:
+  api.Chat:
+    properties:
+      Chat_id:
+        description: Unique identifier for the Chat.
+        type: string
+      created_at:
+        description: Unix timestamp when the Chat was created.
+        type: integer
+      source_language:
+        description: The language code of the original content (e.g., "en" for English).
+        type: string
+      target_language:
+        description: The target language code for translation (e.g., "es" for Spanish).
+        type: string
+      username_a:
+        description: One participant in the Chat.
+        type: string
+      username_b:
+        description: The other participant in the Chat.
+        type: string
+    type: object
+  api.ChatMessage:
+    properties:
+      chat_id:
+        description: Identifier of the Chat to which this message belongs.
+        type: string
+      content:
+        description: The original message content.
+        type: string
+      message_id:
+        description: Unique identifier for the message.
+        type: string
+      receiver_username:
+        description: The receiver's user ID.
+        type: string
+      sender_username:
+        description: The sender's user ID.
+        type: string
+      timestamp:
+        description: Unix timestamp when the message was created.
+        type: integer
+      translated_content:
+        description: The translated content (if applicable).
+        type: string
+    type: object
+  api.CreateChatResponse:
+    properties:
+      chat_id:
+        type: string
+      error:
+        type: string
+      success:
+        type: boolean
+    type: object
+  api.CreateUserResponse:
+    properties:
+      error:
+        type: string
+      success:
+        type: boolean
+      token:
+        type: string
+    type: object
+  api.GetChatResponse:
+    properties:
+      chat:
+        $ref: '#/definitions/api.Chat'
+      error:
+        type: string
+    type: object
+  api.GetUserResponse:
+    properties:
+      error:
+        type: string
+      user:
+        $ref: '#/definitions/api.User'
+    type: object
+  api.ListMessagesResponse:
+    properties:
+      error:
+        type: string
+      messages:
+        description: The list of messages in the Chat.
+        items:
+          $ref: '#/definitions/api.ChatMessage'
+        type: array
+      next_page_token:
+        description: A token that can be used to retrieve the next page of results.
+        type: string
+    type: object
+  api.ListUsersResponse:
+    properties:
+      error:
+        type: string
+      next_page_token:
+        description: Token to retrieve the next page.
+        type: string
+      users:
+        items:
+          $ref: '#/definitions/api.User'
+        type: array
+    type: object
+  api.SendMessageResponse:
+    properties:
+      error:
+        type: string
+      message_id:
+        description: Unique identifier for the message.
+        type: string
+      success:
+        type: boolean
+    type: object
+  api.User:
+    properties:
+      created_at:
+        description: Unix timestamp when the user was created.
+        type: integer
+      email:
+        description: The user's email address.
+        type: string
+      language:
+        description: Preferred language for the user.
+        type: string
+      password:
+        description: Hashed password for the user.
+        type: string
+      user_id:
+        description: Unique identifier for the user.
+        type: string
+      username:
+        description: The user's chosen username.
+        type: string
+    type: object
+  models.CreateChatRequest:
+    properties:
+      sourceLanguage:
+        type: string
+      targetLanguage:
+        type: string
+      userNameB:
+        type: string
+      usernameA:
+        type: string
+    type: object
+  models.CreateUserRequest:
+    properties:
+      email:
+        type: string
+      language:
+        type: string
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  models.SendMessageRequest:
+    properties:
+      content:
+        type: string
+      fromUsername:
+        type: string
+      toUsername:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    name: danyil.butov
+    url: https://github.com/HJyup
+  description: Chat application with async translation. This API enables users to
+    create chats, send messages, and perform translations asynchronously.
+  license:
+    name: MIT License
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://translatify.io/terms/
+  title: Translatify API
+  version: "1.0"
+paths:
+  /api/v1/chats:
+    post:
+      consumes:
+      - application/json
+      description: Create a new chat between two users.
+      parameters:
+      - description: Chat information
+        in: body
+        name: chat
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateChatRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Chat created successfully
+          schema:
+            $ref: '#/definitions/api.CreateChatResponse'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create Chat
+      tags:
+      - chats
+  /api/v1/chats/{chatId}:
+    get:
+      description: Get details of a specific chat.
+      parameters:
+      - description: Chat ID
+        in: path
+        name: chatId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Chat details
+          schema:
+            $ref: '#/definitions/api.GetChatResponse'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get Chat
+      tags:
+      - chats
+  /api/v1/chats/{chatId}/messages:
+    get:
+      description: Get a list of messages for a specific chat.
+      parameters:
+      - description: Chat ID
+        in: path
+        name: chatId
+        required: true
+        type: string
+      - description: Since timestamp (Unix epoch in seconds)
+        in: query
+        name: sinceTimestamp
+        type: integer
+      - description: Maximum number of messages to return
+        in: query
+        name: limit
+        type: integer
+      - description: Token for pagination
+        in: query
+        name: pageToken
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of messages
+          schema:
+            $ref: '#/definitions/api.ListMessagesResponse'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List Messages
+      tags:
+      - chats
+    post:
+      consumes:
+      - application/json
+      description: Send a message in a chat.
+      parameters:
+      - description: Chat ID
+        in: path
+        name: chatId
+        required: true
+        type: string
+      - description: Message information
+        in: body
+        name: message
+        required: true
+        schema:
+          $ref: '#/definitions/models.SendMessageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Message sent successfully
+          schema:
+            $ref: '#/definitions/api.SendMessageResponse'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Send Message
+      tags:
+      - chats
+  /api/v1/chats/{chatId}/messages/stream:
+    get:
+      description: Open a websocket connection to stream messages for a specific chat.
+      parameters:
+      - description: Chat ID
+        in: path
+        name: chatId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "101":
+          description: Switching Protocols
+          schema:
+            type: string
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Stream Messages
+      tags:
+      - chats
+  /api/v1/users:
+    get:
+      description: Retrieve a paginated list of users.
+      parameters:
+      - description: Maximum number of users to return
+        in: query
+        name: limit
+        type: integer
+      - description: Pagination token
+        in: query
+        name: pageToken
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of users
+          schema:
+            $ref: '#/definitions/api.ListUsersResponse'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List Users
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      description: Create a new user account.
+      parameters:
+      - description: User creation data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User created successfully
+          schema:
+            $ref: '#/definitions/api.CreateUserResponse'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create User
+      tags:
+      - users
+  /api/v1/users/{userId}:
+    delete:
+      description: Delete a user by userID. Only the authenticated user may delete
+        their account.
+      parameters:
+      - description: User ID to delete
+        in: path
+        name: userId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Deletion confirmation
+          schema:
+            additionalProperties:
+              type: boolean
+            type: object
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete User
+      tags:
+      - users
+  /api/v1/users/{username}:
+    get:
+      description: Retrieve a user's details by username.
+      parameters:
+      - description: Username
+        in: path
+        name: username
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User details
+          schema:
+            $ref: '#/definitions/api.GetUserResponse'
+        "400":
+          description: Bad request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get User
+      tags:
+      - users
+securityDefinitions:
+  ApiKeyAuth:
+    description: Provide your token with `Bearer <token>` format.
+    in: header
+    name: Authorization
+    type: apiKey
+  BasicAuth:
+    type: basic
+swagger: "2.0"

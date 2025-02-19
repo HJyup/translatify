@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/HJyup/translatify-gateway/internal/gateway/chat"
 	"io"
 	"net/http"
 	"strconv"
@@ -12,8 +11,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 
-	pb "github.com/HJyup/translatify-common/api"
+	"github.com/HJyup/translatify-common/api"
 	"github.com/HJyup/translatify-common/utils"
+	"github.com/HJyup/translatify-gateway/internal/gateway/chat"
 	"github.com/HJyup/translatify-gateway/internal/models"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/codes"
@@ -56,6 +56,19 @@ func extractUsername(r *http.Request) (string, error) {
 	return claims.UserName, nil
 }
 
+// HandleCreateChat godoc
+// @Summary Create Chat
+// @Description Create a new chat between two users.
+// @Tags chats
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param chat body models.CreateChatRequest true "Chat information"
+// @Success 200 {object} api.CreateChatResponse "Chat created successfully"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /api/v1/chats [post]
 func (h *ChatHandler) HandleCreateChat(w http.ResponseWriter, r *http.Request) {
 	var reqBody models.CreateChatRequest
 	body, err := io.ReadAll(r.Body)
@@ -73,7 +86,7 @@ func (h *ChatHandler) HandleCreateChat(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusUnauthorized, "Unauthorized")
 		return
 	}
-	req := &pb.CreateChatRequest{
+	req := &api.CreateChatRequest{
 		UsernameA:      reqBody.UserNameA,
 		UsernameB:      reqBody.UserNameB,
 		SourceLanguage: reqBody.SourceLanguage,
@@ -87,6 +100,18 @@ func (h *ChatHandler) HandleCreateChat(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, resp)
 }
 
+// HandleChat godoc
+// @Summary Get Chat
+// @Description Get details of a specific chat.
+// @Tags chats
+// @Security BearerAuth
+// @Produce json
+// @Param chatId path string true "Chat ID"
+// @Success 200 {object} api.GetChatResponse "Chat details"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /api/v1/chats/{chatId} [get]
 func (h *ChatHandler) HandleChat(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	chatId := vars["chatId"]
@@ -94,7 +119,7 @@ func (h *ChatHandler) HandleChat(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusBadRequest, "chatId is required")
 		return
 	}
-	getReq := &pb.GetChatRequest{ChatId: chatId}
+	getReq := &api.GetChatRequest{ChatId: chatId}
 	chatResp, err := h.gateway.GetChat(r.Context(), getReq)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err.Error())
@@ -108,6 +133,21 @@ func (h *ChatHandler) HandleChat(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, chatResp)
 }
 
+// HandleListMessages godoc
+// @Summary List Messages
+// @Description Get a list of messages for a specific chat.
+// @Tags chats
+// @Security BearerAuth
+// @Produce json
+// @Param chatId path string true "Chat ID"
+// @Param sinceTimestamp query int false "Since timestamp (Unix epoch in seconds)"
+// @Param limit query int false "Maximum number of messages to return"
+// @Param pageToken query string false "Token for pagination"
+// @Success 200 {object} api.ListMessagesResponse "List of messages"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /api/v1/chats/{chatId}/messages [get]
 func (h *ChatHandler) HandleListMessages(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	chatId := vars["chatId"]
@@ -115,7 +155,7 @@ func (h *ChatHandler) HandleListMessages(w http.ResponseWriter, r *http.Request)
 		utils.WriteError(w, http.StatusBadRequest, "chatId is required")
 		return
 	}
-	getReq := &pb.GetChatRequest{ChatId: chatId}
+	getReq := &api.GetChatRequest{ChatId: chatId}
 	chatResp, err := h.gateway.GetChat(r.Context(), getReq)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err.Error())
@@ -148,7 +188,7 @@ func (h *ChatHandler) HandleListMessages(w http.ResponseWriter, r *http.Request)
 		}
 		limit = int32(l)
 	}
-	req := &pb.ListMessagesRequest{
+	req := &api.ListMessagesRequest{
 		ChatId:         chatId,
 		SinceTimestamp: sinceTimestamp,
 		Limit:          limit,
@@ -162,6 +202,18 @@ func (h *ChatHandler) HandleListMessages(w http.ResponseWriter, r *http.Request)
 	utils.WriteJSON(w, http.StatusOK, resp)
 }
 
+// HandleStreamMessages godoc
+// @Summary Stream Messages
+// @Description Open a websocket connection to stream messages for a specific chat.
+// @Tags chats
+// @Security BearerAuth
+// @Produce json
+// @Param chatId path string true "Chat ID"
+// @Success 101 {string} string "Switching Protocols"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /api/v1/chats/{chatId}/messages/stream [get]
 func (h *ChatHandler) HandleStreamMessages(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	chatId := vars["chatId"]
@@ -169,7 +221,7 @@ func (h *ChatHandler) HandleStreamMessages(w http.ResponseWriter, r *http.Reques
 		utils.WriteError(w, http.StatusBadRequest, "chatId is required")
 		return
 	}
-	getReq := &pb.GetChatRequest{ChatId: chatId}
+	getReq := &api.GetChatRequest{ChatId: chatId}
 	chatResp, err := h.gateway.GetChat(r.Context(), getReq)
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err.Error())
@@ -186,7 +238,7 @@ func (h *ChatHandler) HandleStreamMessages(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	defer conn.Close()
-	req := &pb.StreamMessagesRequest{
+	req := &api.StreamMessagesRequest{
 		ChatId: chatId,
 	}
 	grpcStream, err := h.gateway.StreamMessages(r.Context(), req)
@@ -206,6 +258,20 @@ func (h *ChatHandler) HandleStreamMessages(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+// HandleSendMessage godoc
+// @Summary Send Message
+// @Description Send a message in a chat.
+// @Tags chats
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param chatId path string true "Chat ID"
+// @Param message body models.SendMessageRequest true "Message information"
+// @Success 200 {object} api.SendMessageResponse "Message sent successfully"
+// @Failure 400 {object} map[string]string "Bad request"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /api/v1/chats/{chatId}/messages [post]
 func (h *ChatHandler) HandleSendMessage(w http.ResponseWriter, r *http.Request) {
 	tr := otel.Tracer("http")
 	ctx, span := tr.Start(r.Context(), fmt.Sprintf("%s %s", r.Method, r.RequestURI))
@@ -217,7 +283,7 @@ func (h *ChatHandler) HandleSendMessage(w http.ResponseWriter, r *http.Request) 
 		utils.WriteError(w, http.StatusBadRequest, "chatId is required")
 		return
 	}
-	getReq := &pb.GetChatRequest{ChatId: chatId}
+	getReq := &api.GetChatRequest{ChatId: chatId}
 	chatResp, err := h.gateway.GetChat(ctx, getReq)
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
@@ -244,7 +310,7 @@ func (h *ChatHandler) HandleSendMessage(w http.ResponseWriter, r *http.Request) 
 		utils.WriteError(w, http.StatusUnauthorized, "Unauthorized sender")
 		return
 	}
-	req := &pb.SendMessageRequest{
+	req := &api.SendMessageRequest{
 		ChatId:           chatId,
 		SenderUsername:   reqBody.FromUserName,
 		ReceiverUsername: reqBody.ToUserName,
