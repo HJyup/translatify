@@ -1,5 +1,8 @@
 # Translatify
 
+> [!NOTE]  
+> This project isn’t intended to become a fully completed product—it’s more of a big sandbox for me to experiment with and deepen my Go knowledge. It’s a place where I can apply and test new concepts in real-world scenarios, such as an asynchronous chat application. Feel free to check it out if you’re interested!
+
 --- 
 
 ## Overview
